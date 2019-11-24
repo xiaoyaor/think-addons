@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace think\addons;
 
-use fast\Http;
+use easy\Http;
 use think\facade\Db;
 use think\Exception;
 use think\facade\Env;
