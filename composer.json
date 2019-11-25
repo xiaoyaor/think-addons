@@ -2,6 +2,7 @@
     "name": "xiaoyaor/think-addons",
     "description": "The ThinkPHP6 Addons Package",
     "homepage": "https://github.com/xiaoyaor/think-addons",
+    "version": "1.0.1",
     "license": "Apache-2.0",
     "authors": [
         {
