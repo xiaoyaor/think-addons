@@ -54,12 +54,16 @@ abstract class Addons
         $this->app = $app;
         $this->request = $app->request;
         $this->name = $this->getName();
-        $this->addon_path = $app->addons->getAddonsPath() . $this->name . DIRECTORY_SEPARATOR;
+        $this->addon_path = $app->getRootPath() . 'addons'. DIRECTORY_SEPARATOR . $this->name . DIRECTORY_SEPARATOR;
         $this->addon_config = "addon_{$this->name}_config";
         $this->addon_info = "addon_{$this->name}_info";
         $this->view = clone View::engine('Think');
+        //$this->view->layout(false);
+//        $this->view->config([
+//            'view_path' =>app_path(). 'view' . DIRECTORY_SEPARATOR . $this->name  . DIRECTORY_SEPARATOR
+//        ]);
         $this->view->config([
-            'view_path' => $this->addon_path . 'view' . DIRECTORY_SEPARATOR
+            'view_path' =>$this->addon_path
         ]);
 
         // 控制器初始化
@@ -98,11 +102,15 @@ abstract class Addons
 
     /**
      * 获取配置信息
+     * @param string $name 插件名称
      * @param bool $type 是否获取完整配置
      * @return array|mixed
      */
-    final public function getConfig($type = false)
+    final public function getConfig($name = '',$type = false)
     {
+        if (empty($name)) {
+            $name = $this->getName();
+        }
         $config = Config::get($this->addon_config, []);
         if ($config) {
             return $config;
@@ -224,7 +232,7 @@ abstract class Addons
      * @param  array  $vars    模板输出变量
      * @return mixed
      */
-    protected function display($content = '', $vars = [])
+    protected function display($content = '}', $vars = [])
     {
         return $this->view->display($content, $vars);
     }
@@ -236,9 +244,9 @@ abstract class Addons
      * @param  mixed $value 变量的值
      * @return $this
      */
-    protected function assign($name, $value = '')
+    protected function assign($name , $value = '')
     {
-        $this->view->assign([$name => $value]);
+        $this->view->assign($name , $value);
 
         return $this;
     }
@@ -256,6 +264,22 @@ abstract class Addons
         return $this;
     }
 
+    /**
+     * 输出信息到控制台
+     * @param string $params
+     * @return false|mixed|string
+     * @throws \think\Exception
+     */
+    protected function dashboard($params)
+    {
+        if (!file_exists($this->addon_path.'dashboard.html')){
+            return null;
+        }
+        $this->view->layout(false);
+        $addons =$this->getInfo() ;
+        $this->assign(['params' => $params,'addons' => $addons]);
+        return $this->fetch('/dashboard');
+    }
 
     //必须实现安装
     abstract public function install();

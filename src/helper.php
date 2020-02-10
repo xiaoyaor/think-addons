@@ -38,13 +38,28 @@ spl_autoload_register(function ($class) {
             include $dir;
             return true;
         }
-
         return false;
     }
-
     return false;
 
 });
+
+if (!function_exists('listen')) {
+    /**
+     * 注册事件监听
+     * @access public
+     * @param string $event    事件名称
+     * @param mixed  $listener 监听操作（或者类名）
+     * @param bool   $first    是否优先执行
+     * @return \think\Event
+     */
+    function listen(string $event, $listener, bool $first = false)
+    {
+        $result = Event::listen($event, $listener, $first);
+
+        return $result;
+    }
+}
 
 if (!function_exists('hook')) {
     /**
@@ -203,7 +218,7 @@ if (!function_exists('get_addon_list')) {
 
             //这里不采用get_addon_info是因为会有缓存
             //$info = get_addon_info($name);
-            $info_file = $addonDir . 'info.ini';
+            $info_file = $addonDir .'info.ini';
             if (!is_file($info_file))
                 continue;
 
@@ -328,6 +343,23 @@ if (!function_exists('get_addon_info')) {
     }
 }
 
+if (!function_exists('check_addon_exist')) {
+
+    /**
+     * 读取插件的基础信息
+     * @param string $name 插件名
+     * @return boolean
+     */
+    function check_addon_exist($name)
+    {
+        $addon = get_addon_instance($name);
+        if (!$addon) {
+            return [];
+        }
+        return $addon->getInfo($name);
+    }
+}
+
 if (!function_exists('get_addon_fullconfig')) {
 
     /**
@@ -355,7 +387,7 @@ if (!function_exists('set_addon_info')) {
      */
     function set_addon_info($name, $array)
     {
-        $file = ADDON_PATH . $name . DIRECTORY_SEPARATOR . 'info.ini';
+        $file = ADDON_PATH . $name . DIRECTORY_SEPARATOR .'info.ini';
         $addon = get_addon_instance($name);
         $array = $addon->setInfo($name, $array);
         $res = array();
@@ -499,6 +531,64 @@ if (!function_exists('get_addon_autoload_config')) {
         return $config;
     }
 }
+
+/**
+ * 插件显示内容里生成访问插件的url
+ * @param string      $url    地址 格式：插件名/控制器/方法
+ * @param array       $vars   变量参数
+ * @param bool|string $suffix 生成的URL后缀
+ * @param bool|string $domain 域名
+ * @return bool|string
+ */
+function addon_url($url, $vars = [], $suffix = true, $domain = false)
+{
+    $url = ltrim($url, '/');
+    $addon = substr($url, 0, stripos($url, '/'));
+    if (!is_array($vars)) {
+        parse_str($vars, $params);
+        $vars = $params;
+    }
+    $params = [];
+    foreach ($vars as $k => $v) {
+        if (substr($k, 0, 1) === ':') {
+            $params[$k] = $v;
+            unset($vars[$k]);
+        }
+    }
+    $val = "@addons/{$url}";
+    $dd=url();
+    $config = get_addon_config($addon);
+    $domainprefix = $config && isset($config['domain']) && $config['domain'] ? $config['domain'] : '';
+    $domain = $domainprefix && Config::get('url_domain_deploy') ? $domainprefix : $domain;
+    $rewrite = $config && isset($config['rewrite']) && $config['rewrite'] ? $config['rewrite'] : [];
+    if ($rewrite) {
+        $path = substr($url, stripos($url, '/') + 1);
+        if (isset($rewrite[$path]) && $rewrite[$path]) {
+            $val = $rewrite[$path];
+            array_walk($params, function ($value, $key) use (&$val) {
+                $val = str_replace("[{$key}]", $value, $val);
+            });
+            $val = str_replace(['^', '$'], '', $val);
+            if (substr($val, -1) === '/') {
+                $suffix = false;
+            }
+        } else {
+            // 如果采用了域名部署,则需要去掉前两段
+            if ($indomain && $domainprefix) {
+                $arr = explode("/", $val);
+                $val = implode("/", array_slice($arr, 2));
+            }
+        }
+    } else {
+        foreach ($params as $k => $v) {
+            $vars[substr($k, 1)] = $v;
+        }
+    }
+    $url = url($val, [], $suffix, $domain) . ($vars ? '?' . http_build_query($vars) : '');
+    $url = preg_replace("/\/((?!index)[\w]+)\.php\//i", "/", $url);
+    return $url;
+}
+
 
 if (!function_exists('parseName')) {
 

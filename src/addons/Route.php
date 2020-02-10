@@ -42,6 +42,8 @@ class Route
         $request = $app->request;
 
         Event::trigger('addons_begin', $request);
+        $controller?null:$controller='index';
+        $action?null:$action='index';
 
         if (empty($addon) || empty($controller) || empty($action)) {
             throw new HttpException(500, lang('addon can not be empty'));
@@ -56,7 +58,7 @@ class Route
         if (!$info) {
             throw new HttpException(404, lang('addon %s not found', [$addon]));
         }
-        if (!$info['status']) {
+        if (!$info['state']) {
             throw new HttpException(500, lang('addon %s is disabled', [$addon]));
         }
 

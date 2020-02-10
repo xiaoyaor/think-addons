@@ -26,9 +26,23 @@ use ZipArchive;
 class Service extends \think\Service
 {
     protected $addons_path;
+    //网站根目录
+    protected static $web_dir;
+    //插件文件存放文件夹
+    protected static $addon_dir='addon';
+    //缓存文件夹，插件关闭后可删除
+    protected static $cache_dir='cache';
+    //存放插件与系统冲突的文件
+    protected static $conflict_dir='cache/conflict/';
+    //网站数据库文件存放文件夹
+    protected static $mysql_dir='mysql';
 
+    /**
+     * 注册服务
+     */
     public function register()
     {
+        Config::get('easyadmin.web_dir')?self::$web_dir=Config::get('easyadmin.web_dir'):self::$web_dir='';
         // 插件目录
         define('ADDON_PATH', root_path() . 'addons' . DIRECTORY_SEPARATOR);
         $this->addons_path = $this->getAddonsPath();
@@ -36,16 +50,19 @@ class Service extends \think\Service
         Lang::load([
             $this->app->getRootPath() . '/vendor/xiaoyaor/think-addons/src/lang/zh-cn.php'
         ]);
-        // 自动载入插件
+        // 1.自动载入插件
         $this->autoload();
-        // 加载插件事件
+        // 2.加载插件事件
         $this->loadEvent();
-        // 加载插件系统服务
+        // 3.加载插件系统服务
         $this->loadService();
-        // 绑定插件容器
+        // 4.绑定插件容器
         $this->app->bind('addons', Service::class);
     }
 
+    /*
+     * 启动服务
+     */
     public function boot()
     {
         $this->registerRoutes(function (Route $route) {
@@ -66,7 +83,7 @@ class Service extends \think\Service
                     foreach ($val['rule'] as $k => $rule) {
                         [$addon, $controller, $action] = explode('/', $rule);
                         $rules[$k] = [
-                            'addons'        => $addon,
+                            'addon'        => $addon,
                             'controller'    => $controller,
                             'action'        => $action,
                             'indomain'      => 1,
@@ -87,7 +104,7 @@ class Service extends \think\Service
                         ->name($key)
                         ->completeMatch(true)
                         ->append([
-                            'addons' => $addon,
+                            'addon' => $addon,
                             'controller' => $controller,
                             'action' => $action
                         ]);
@@ -181,7 +198,7 @@ class Service extends \think\Service
             // 找到插件入口文件
             if (strtolower($info['filename']) === $name) {
                 //插件关闭后不加载事件
-                $ini_file = $info['dirname'].DIRECTORY_SEPARATOR. 'info.ini';
+                $ini_file = $info['dirname'].DIRECTORY_SEPARATOR.'info.ini';
                 if (!is_file($ini_file)) {
                     continue;
                 }
@@ -388,7 +405,7 @@ class Service extends \think\Service
         $list = self::getGlobalFiles($name, true);
         if ($list) {
             //发现冲突文件，抛出异常
-            throw new AddonException("发现冲突文件", -3, ['conflictlist' => $list]);
+            //throw new AddonException("发现冲突文件", -3, ['conflictlist' => $list]);
         }
         return true;
     }
@@ -442,7 +459,7 @@ class Service extends \think\Service
                 $bootstrapArr[] = file_get_contents($bootstrapFile);
             }
         }
-        $addonsFile = root_path() . str_replace("/", DIRECTORY_SEPARATOR, "public/assets/js/addons.js");
+        $addonsFile = root_path() . str_replace("/", DIRECTORY_SEPARATOR, self::$web_dir."assets/js/addons.js");
         if ($handle = fopen($addonsFile, 'w')) {
             $tpl = <<<EOD
 define([], function () {
@@ -515,16 +532,8 @@ EOD;
         }
 
         // 复制文件
-        $sourceAssetsDir = self::getSourceAssetsDir($name);
-        $destAssetsDir = self::getDestAssetsDir($name);
-        if (is_dir($sourceAssetsDir)) {
-            copydirs($sourceAssetsDir, $destAssetsDir);
-        }
-        foreach (self::getCheckDirs() as $k => $dir) {
-            if (is_dir($addonDir . $dir)) {
-                $path=root_path() . $dir;
-                copydirs($addonDir . $dir, $path);
-            }
+        if (is_dir($addonDir . self::$addon_dir)) {
+            copydirs($addonDir . self::$addon_dir, root_path());
         }
 
         try {
@@ -567,24 +576,6 @@ EOD;
             throw new Exception('Addon not exists');
         }
 
-        if (!$force) {
-            Service::noconflict($name);
-        }
-
-        // 移除插件基础资源目录
-        $destAssetsDir = self::getDestAssetsDir($name);
-        if (is_dir($destAssetsDir)) {
-            rmdirs($destAssetsDir);
-        }
-
-        // 移除插件全局资源文件
-        if ($force) {
-            $list = Service::getGlobalFiles($name);
-            foreach ($list as $k => $v) {
-                @unlink(root_path() . $v);
-            }
-        }
-
         // 执行卸载脚本
         try {
             $class = get_addon_class($name);
@@ -594,6 +585,18 @@ EOD;
             }
         } catch (Exception $e) {
             throw new Exception($e->getMessage());
+        }
+
+        if (!$force) {
+            Service::noconflict($name);
+        }
+
+        // 移除插件全局资源文件
+        if ($force) {
+            $list = Service::getGlobalFiles($name);
+            foreach ($list as $k => $v) {
+                @unlink(root_path() . $v);
+            }
         }
 
         // 移除插件目录
@@ -620,19 +623,23 @@ EOD;
             Service::noconflict($name);
         }
 
+        //备份冲突文件
+        $list = Service::getGlobalFiles($name,true);
+        Service::ConflictFiles($name,$list,true);
+
         $addonDir = ADDON_PATH . $name . DIRECTORY_SEPARATOR;
 
         // 复制文件
-        $sourceAssetsDir = self::getSourceAssetsDir($name);
-        $destAssetsDir = self::getDestAssetsDir($name);
-        if (is_dir($sourceAssetsDir)) {
-            copydirs($sourceAssetsDir, $destAssetsDir);
+        if (is_dir($addonDir . self::$addon_dir)) {
+            copydirs($addonDir . self::$addon_dir, root_path());
         }
-        foreach (self::getCheckDirs() as $k => $dir) {
-            if (is_dir($addonDir . $dir)) {
-                copydirs($addonDir . $dir, root_path() . $dir);
-            }
-        }
+
+
+        $info = get_addon_info($name);
+        $info['state'] = 1;
+        unset($info['url']);
+
+        set_addon_info($name, $info);
 
         //执行启用脚本
         try {
@@ -646,12 +653,6 @@ EOD;
         } catch (Exception $e) {
             throw new Exception($e->getMessage());
         }
-
-        $info = get_addon_info($name);
-        $info['state'] = 1;
-        unset($info['url']);
-
-        set_addon_info($name, $info);
 
         // 刷新
         Service::refresh();
@@ -671,27 +672,6 @@ EOD;
         if (!$name || !is_dir(ADDON_PATH . $name)) {
             throw new Exception('Addon not exists');
         }
-        if (!$force) {
-            Service::noconflict($name);
-        }
-
-        // 移除插件基础资源目录
-        $destAssetsDir = self::getDestAssetsDir($name);
-        if (is_dir($destAssetsDir)) {
-            rmdirs($destAssetsDir);
-        }
-
-        // 移除插件全局资源文件
-        $list = Service::getGlobalFiles($name);
-        foreach ($list as $k => $v) {
-            @unlink(root_path() . $v);
-        }
-
-        $info = get_addon_info($name);
-        $info['state'] = 0;
-        unset($info['url']);
-
-        set_addon_info($name, $info);
 
         // 执行禁用脚本
         try {
@@ -706,6 +686,24 @@ EOD;
         } catch (Exception $e) {
             throw new Exception($e->getMessage());
         }
+
+        if (!$force) {
+            Service::noconflict($name);
+        }
+
+        // 移除插件全局资源文件
+        $list = Service::getGlobalFiles($name);
+        foreach ($list as $k => $v) {
+            @unlink(root_path() . $v);
+        }
+        //还原冲突文件
+        Service::ConflictFiles($name);
+
+        $info = get_addon_info($name);
+        $info['state'] = 0;
+        unset($info['url']);
+
+        set_addon_info($name, $info);
 
         // 刷新
         Service::refresh();
@@ -773,6 +771,7 @@ EOD;
      * 获取插件在全局的文件
      *
      * @param   string $name 插件名称
+     * @param   boolean $onlyconflict 判断获取所有插件文件or只冲突的文件，默认获取冲突的文件
      * @return  array
      */
     public static function getGlobalFiles($name, $onlyconflict = false)
@@ -780,31 +779,26 @@ EOD;
         $list = [];
         $addonDir = ADDON_PATH . $name . DIRECTORY_SEPARATOR;
         // 扫描插件目录是否有覆盖的文件
-        foreach (self::getCheckDirs() as $k => $dir) {
-            $checkDir = root_path() . DIRECTORY_SEPARATOR . $dir . DIRECTORY_SEPARATOR;
-            if (!is_dir($checkDir))
-                continue;
-            //检测到存在插件外目录
-            if (is_dir($addonDir . $dir)) {
-                //匹配出所有的文件
-                $files = new RecursiveIteratorIterator(
-                    new RecursiveDirectoryIterator($addonDir . $dir, RecursiveDirectoryIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST
-                );
+        //检测到存在插件外目录
+        if (is_dir($addonDir . self::$addon_dir)) {
+            //匹配出所有的文件
+            $files = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($addonDir . self::$addon_dir, RecursiveDirectoryIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST
+            );
 
-                foreach ($files as $fileinfo) {
-                    if ($fileinfo->isFile()) {
-                        $filePath = $fileinfo->getPathName();
-                        $path = str_replace($addonDir, '', $filePath);
-                        if ($onlyconflict) {
-                            $destPath = root_path() . $path;
-                            if (is_file($destPath)) {
-                                if (filesize($filePath) != filesize($destPath) || md5_file($filePath) != md5_file($destPath)) {
-                                    $list[] = $path;
-                                }
+            foreach ($files as $fileinfo) {
+                if ($fileinfo->isFile()) {
+                    $filePath = $fileinfo->getPathName();
+                    $path = str_replace($addonDir . self::$addon_dir . DIRECTORY_SEPARATOR, '', $filePath);
+                    if ($onlyconflict) {
+                        $destPath = root_path() . $path;
+                        if (is_file($destPath)) {
+                            if (filesize($filePath) != filesize($destPath) || md5_file($filePath) != md5_file($destPath)) {
+                                $list[] = $path;
                             }
-                        } else {
-                            $list[] = $path;
                         }
+                    } else {
+                        $list[] = $path;
                     }
                 }
             }
@@ -813,27 +807,35 @@ EOD;
     }
 
     /**
-     * 获取插件源资源文件夹
+     * 处理冲突的文件
+     *
      * @param   string $name 插件名称
-     * @return  string
+     * @param   array $list 文件列表
+     * @param   boolean $operation 文件操作，保存or恢复冲突文件。默认恢复
+     * @return  boolean
      */
-    protected static function getSourceAssetsDir($name)
+    public static function ConflictFiles($name,$list=[], $operation = false)
     {
-        return ADDON_PATH . $name . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR;
-    }
-
-    /**
-     * 获取插件目标资源文件夹
-     * @param   string $name 插件名称
-     * @return  string
-     */
-    protected static function getDestAssetsDir($name)
-    {
-        $assetsDir = root_path() . str_replace("/", DIRECTORY_SEPARATOR, "public/assets/addons/{$name}/");
-        if (!is_dir($assetsDir)) {
-            mkdir($assetsDir, 0755, true);
+        $destPath = root_path();//网站目录
+        $conflictDir = ADDON_PATH . $name . DIRECTORY_SEPARATOR. self::$conflict_dir;//插件下冲突文件目录
+        if ($operation){
+            is_dir($conflictDir)?delDirAndFile($conflictDir):null;
+            foreach ($list as $file) {
+                if (is_file($destPath . $file)) {
+                    $path=dirname($conflictDir . $file);
+                    if (!is_dir($path)){
+                        mkdir($path,0777,true);
+                    }
+                    copy($destPath . $file, $conflictDir . $file );
+                }
+            }
+        }else{
+            // 恢复文件
+            if (is_dir($conflictDir)) {
+                copydirs($conflictDir, $destPath);
+            }
         }
-        return $assetsDir;
+        return true;
     }
 
     /**
@@ -843,17 +845,5 @@ EOD;
     protected static function getServerUrl()
     {
         return Config::get('easyadmin.api_url');
-    }
-
-    /**
-     * 获取检测的全局文件夹目录
-     * @return  array
-     */
-    protected static function getCheckDirs()
-    {
-        return [
-            'app',
-            'public'
-        ];
     }
 }
