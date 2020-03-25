@@ -71,6 +71,9 @@ if (!function_exists('hook')) {
      */
     function hook($event, $params = null, bool $once = false)
     {
+        //下划线转驼峰(首字母小写)
+        $event = Str::camel($event);
+
         $result = Event::trigger($event, $params, $once);
 
         return join('', $result);
@@ -91,6 +94,34 @@ if (!function_exists('get_addons_info')) {
         }
 
         return $addon->getInfo();
+    }
+}
+
+if (!function_exists('getInfo')) {
+    /**
+     * 插件基础信息
+     * @param string $name 插件名
+     * @return array
+     */
+    function getInfo($name)
+    {
+        $info = Config::get($name, []);
+        if ($info) {
+            return $info;
+        }
+
+        // 文件属性
+        $info = [];
+        // 文件配置
+        $info_file = addons_type(ADDON_PATH.$name.DIRECTORY_SEPARATOR);
+        if (is_file($info_file)) {
+            $_info = parse_ini_file($info_file, true, INI_SCANNER_TYPED) ?: [];
+            $_info['url'] = addons_url();
+            $info = array_merge($_info, $info);
+        }
+        Config::set($info,$name);
+
+        return isset($info) ? $info : [];
     }
 }
 
@@ -127,11 +158,17 @@ if (!function_exists('get_addons_class')) {
      */
     function get_addons_class($name, $type = 'hook', $class = null)
     {
+        $namelist=[];
         $name = trim($name);
+        if (strrpos($name ,".")!== false){
+            $namelist = explode('.', $name);
+            $name=$namelist[0];
+        }
         // 处理多级控制器情况
         if (!is_null($class) && strpos($class, '.')) {
             $class = explode('.', $class);
 
+            //$class[0] = $class[0].'\\controller';
             $class[count($class) - 1] = Str::studly(end($class));
             $class = implode('\\', $class);
         } else {
@@ -139,10 +176,14 @@ if (!function_exists('get_addons_class')) {
         }
         switch ($type) {
             case 'controller':
-                $namespace = '\\addons\\' . $name . '\\controller\\' . $class;
+                if($namelist){
+                    $namespace = '\\addons\\' . $namelist[0] . '\\app\\'. $namelist[1] .'\\controller\\'.$class ;
+                }else{
+                    $namespace = '\\addons\\' . $name . '\\controller\\'.$class;
+                }
                 break;
             default:
-                $namespace = '\\addons\\' . $name . '\\'.$name;
+                $namespace = '\\addons\\' . strtolower(str::snake($name)) . '\\'.str::studly($name);
         }
 
         return class_exists($namespace) ? $namespace : '';
@@ -193,6 +234,49 @@ if (!function_exists('addons_url')) {
     }
 }
 
+if (!function_exists('addons_url2')) {
+    /**
+     * 插件显示内容里生成访问插件的url
+     * @param $url
+     * @param array $param
+     * @param bool|string $suffix 生成的URL后缀
+     * @param bool|string $domain 域名
+     * @return bool|string
+     */
+    function addons_url2($url = '', $param = [], $suffix = true, $domain = false)
+    {
+        $request = app('request');
+        if (empty($url)) {
+            // 生成 url 模板变量
+            $addons = $request->addon;
+            $controller = $request->controller();
+            $controller = str_replace('/', '.', $controller);
+            $action = $request->action();
+        } else {
+            $url = Str::studly($url);
+            $url = parse_url($url);
+            if (isset($url['scheme'])) {
+                $addons = strtolower($url['scheme']);
+                $controller = $url['host'];
+                $action = trim($url['path'], '/');
+            } else {
+                $route = explode('/', $url['path']);
+                $addons = $request->addon.'.admin';
+                $action = array_pop($route);
+                $controller = array_pop($route) ?: $request->controller();
+            }
+            $controller = Str::snake((string)$controller);
+
+            /* 解析URL带的参数 */
+            if (isset($url['query'])) {
+                parse_str($url['query'], $query);
+                $param = array_merge($query, $param);
+            }
+        }
+
+        return Route::buildUrl("@addons.{$addons}/{$controller}/{$action}", $param)->suffix($suffix)->domain($domain);
+    }
+}
 
 if (!function_exists('get_addon_list')) {
 
@@ -213,14 +297,17 @@ if (!function_exists('get_addon_list')) {
             if (!is_dir($addonDir))
                 continue;
 
-            if (!is_file($addonDir . ucfirst($name) . '.php'))
+            if (!is_file($addonDir . str::studly($name) . '.php'))
                 continue;
 
             //这里不采用get_addon_info是因为会有缓存
             //$info = get_addon_info($name);
-            $info_file = $addonDir .'info.ini';
-            if (!is_file($info_file))
+            if (addons_type($addonDir,false)=='addon'){
+                $info_file=addons_type($addonDir);
+            }else{
                 continue;
+            }
+
 
             $info = Config::load($info_file, '', "addon-info-{$name}");
             $info['url'] = addons_url($name);
@@ -230,6 +317,50 @@ if (!function_exists('get_addon_list')) {
     }
 
 }
+
+if (!function_exists('get_app_list')) {
+
+    /**
+     * 获得应用列表
+     * @param bool $isrun 是否只开启的
+     * @return array
+     */
+    function get_app_list($isrun=false)
+    {
+        $results = scandir(ADDON_PATH);
+        $list = [];
+        foreach ($results as $name) {
+            if ($name === '.' or $name === '..')
+                continue;
+            if (is_file(ADDON_PATH . $name))
+                continue;
+            $addonDir = ADDON_PATH . $name . DIRECTORY_SEPARATOR;
+            if (!is_dir($addonDir))
+                continue;
+
+            if (!is_file($addonDir . str::studly($name) . '.php'))
+                continue;
+
+            //这里不采用get_addon_info是因为会有缓存
+            //$info = get_addon_info($name);
+            if (addons_type($addonDir,false)=='app'){
+                $info_file=addons_type($addonDir);
+            }else{
+                continue;
+            }
+
+            $info = Config::load($info_file);
+            if ($isrun&&$info['state']!=1)
+                continue;
+            $info['url'] = addons_url($name);
+            $list[$name] = $info;
+        }
+        return $list;
+    }
+
+}
+
+
 if (!function_exists('get_addon_config')) {
 
     /**
@@ -303,29 +434,6 @@ if (!function_exists('get_addon_class')) {
     }
 }
 
-if (!function_exists('parse_name')) {
-    /**
-     * 字符串命名风格转换
-     * type 0 将Java风格转换为C的风格 1 将C风格转换为Java的风格
-     * @param string $name    字符串
-     * @param int    $type    转换类型
-     * @param bool   $ucfirst 首字母是否大写（驼峰规则）
-     * @return string
-     */
-    function parse_name(string $name, int $type = 0, bool $ucfirst = true): string
-    {
-        if ($type) {
-            $name = preg_replace_callback('/_([a-zA-Z])/', function ($match) {
-                return strtoupper($match[1]);
-            }, $name);
-
-            return $ucfirst ? ucfirst($name) : lcfirst($name);
-        }
-
-        return strtolower(trim(preg_replace("/[A-Z]/", "_\\0", $name), "_"));
-    }
-}
-
 if (!function_exists('get_addon_info')) {
 
     /**
@@ -387,7 +495,7 @@ if (!function_exists('set_addon_info')) {
      */
     function set_addon_info($name, $array)
     {
-        $file = ADDON_PATH . $name . DIRECTORY_SEPARATOR .'info.ini';
+        $file = addons_type(ADDON_PATH . $name . DIRECTORY_SEPARATOR);
         $addon = get_addon_instance($name);
         $array = $addon->setInfo($name, $array);
         $res = array();
@@ -497,7 +605,7 @@ if (!function_exists('get_addon_autoload_config')) {
             $hooks = array_diff($methods, $base);
             // 循环将钩子方法写入配置中
             foreach ($hooks as $hook) {
-                $hook = parseName($hook, 0, false);
+                $hook = parse_name($hook, 0, false);
                 if (!isset($config['hooks'][$hook])) {
                     $config['hooks'][$hook] = [];
                 }
@@ -589,28 +697,31 @@ function addon_url($url, $vars = [], $suffix = true, $domain = false)
     return $url;
 }
 
-
-if (!function_exists('parseName')) {
-
+if (!function_exists('addons_type')) {
     /**
-     * 字符串命名风格转换
-     * type 0 将 Java 风格转换为 C 的风格 1 将 C 风格转换为 Java 的风格
-     * @access public
-     * @param  string  $name    字符串
-     * @param  integer $type    转换类型
-     * @param  bool    $ucfirst 首字母是否大写（驼峰规则）
-     * @return string
+     * 判断插件是addon还是app
+     * @param string $path 插件路径
+     * @param boolean $type 返回类型：true:返回ini文件完整路径 false:返回插件类型
+     * @return mixed
      */
-    function parseName($name, $type = 0, $ucfirst = true)
+    function addons_type($path,$type=true)
     {
         if ($type) {
-            $name = preg_replace_callback('/_([a-zA-Z])/', function ($match) {
-                return strtoupper($match[1]);
-            }, $name);
-
-            return $ucfirst ? ucfirst($name) : lcfirst($name);
+            if (is_file($path . 'addon.ini')) {
+                return $path . 'addon.ini';
+            } else if (is_file($path . 'app.ini')) {
+                return $path . 'app.ini';
+            } else {
+                return $path;
+            }
+        } else {
+            if (is_file($path . 'addon.ini')) {
+                return 'addon';
+            } else if (is_file($path . 'app.ini')) {
+                return 'app';
+            } else {
+                return '';
+            }
         }
-
-        return strtolower(trim(preg_replace("/[A-Z]/", "_\\0", $name), "_"));
     }
 }

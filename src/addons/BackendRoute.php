@@ -28,28 +28,35 @@ use think\facade\Config;
 use think\exception\HttpException;
 use think\addons;
 
-class Route
+class BackendRoute
 {
 
     /**
      * 插件路由请求
      * @param null $addon 插件名称
-     * @param null $module 模块名称
+     * @param string $module 模块名称
      * @param null $controller 控制器类名
      * @param null $action 行为函数
      * @return mixed
      */
-    public static function execute($addon = null, $module = null, $controller = null, $action = null)
+    public static function execute($addon = null, $module = 'admin', $controller = null, $action = null)
     {
-        if ($addon&&$module=='admin'){
-            throw new HttpException(500, lang('Turn off to the background'));
-        }
         $app = app();
         $request = $app->request;
-        $backend=explode('/',$request->pathinfo());
-        $addon=$addon?:$addon=$backend[0];
-        if ($request->root()=='/'.env('app.admin', 'admin')){
-            $module='admin';
+        //去除网址后缀
+        $remove=substr($request->pathinfo(),strlen($request->pathinfo())-strlen('.'.Config::get('app.default_return_type')));
+        if ($remove == '.'.Config::get('app.default_return_type')){
+            $backend=explode('/',str_replace('.'.Config::get('app.default_return_type'),'', $request->pathinfo()));
+        }else{
+            $backend=explode('/',$request->pathinfo());
+        }
+
+        $url=explode(',',$backend[0]);
+        $addon=$addon?:$addon=$url[0];
+        //$controller=;
+        //$action=;
+        if ($request->root()!='/'.env('app.admin', 'admin')){
+            throw new HttpException(500, lang('Turn off to the background'));
         }
 
         Event::trigger('addons_begin', $request);
@@ -75,11 +82,7 @@ class Route
 
         // 监听addon_module_init
         Event::trigger('addon_module_init', $request);
-        if ($module||$backend[0]==Config::get('easyadmin.app_url_prefix')){
-            $class = get_addons_class($addon.'.'.$module=$module?:$module='index', 'controller', $controller);
-        }else{
-            $class = get_addons_class($addon, 'controller', $controller);
-        }
+        $class = get_addons_class($addon.'.'.$module, 'controller', $controller);
         if (!$class) {
             throw new HttpException(404, lang('addon controller %s not found', [Str::studly($controller)]));
         }

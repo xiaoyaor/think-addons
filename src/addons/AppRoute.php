@@ -28,7 +28,7 @@ use think\facade\Config;
 use think\exception\HttpException;
 use think\addons;
 
-class Route
+class AppRoute
 {
 
     /**
@@ -48,11 +48,12 @@ class Route
         $request = $app->request;
         $backend=explode('/',$request->pathinfo());
         $addon=$addon?:$addon=$backend[0];
-        if ($request->root()=='/'.env('app.admin', 'admin')){
-            $module='admin';
-        }
+//        if ($request->root()=='/'.env('app.admin', 'admin')){
+//            $module='admin';
+//        }
 
         Event::trigger('addons_begin', $request);
+        $module?null:$module='index';
         $controller?null:$controller='index';
         $action?null:$action='index';
 
@@ -65,7 +66,7 @@ class Route
         $request->setController($controller)->setAction($action);
 
         // 获取插件基础信息
-        $info = getInfo($addon);
+        $info = get_addons_info($addon);
         if (!$info) {
             throw new HttpException(404, lang('addon %s not found', [$addon]));
         }

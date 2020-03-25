@@ -1,46 +1,66 @@
 <?php
+/**
+ * +----------------------------------------------------------------------
+ * | think-addons [thinkphp6]
+ * +----------------------------------------------------------------------
+ *  .--,       .--,             | FILE: Addons.php
+ * ( (  \.---./  ) )            | AUTHOR: byron
+ *  '.__/o   o\__.'             | EMAIL: xiaobo.sun@qq.com
+ *     {=  ^  =}                | QQ: 150093589
+ *     /       \                | DATETIME: 2019/11/5 14:47
+ *    //       \\               |
+ *   //|   .   |\\              |
+ *   "'\       /'"_.-~^`'-.     |
+ *      \  _  /--'         `    |
+ *    ___)( )(___               |-----------------------------------------
+ *   (((__) (__)))              | 高山仰止,景行行止.虽不能至,心向往之。
+ * +----------------------------------------------------------------------
+ * | Copyright (c) 2019 http://www.zzstudio.net All rights reserved.
+ * +----------------------------------------------------------------------
+ */
+declare(strict_types=1);
 
-namespace think;
+namespace think\addons\addons;
 
 use app\BaseController;
-use app\common\library\Auth;
 use think\App;
+use think\helper\Str;
 use think\facade\Config;
-use think\Event;
-use think\Lang;
-use think\facade\Request;
 use think\facade\View;
 
 /**
  * 插件基类控制器
- * @package think\addons
+ * @package think\appaddons
  */
-class Addons
+class AppAddons
 {
     // app 容器
     protected $app;
-    // 请求对象
-    protected $request;
-    // 当前插件标识
-    protected $name;
-    // 插件路径
-    protected $addon_path;
-    // 视图模型
-    protected $view;
-    // 插件配置
-    protected $addon_config;
-    // 插件信息
-    protected $addon_info;
     /**
      * 存储数据
      * @var array
      */
     protected $data = [];
+    // 请求对象
+    protected $request;
+    // 当前插件标识
+    protected $name;
+    // 视图路径
+    protected $path;
+    // 插件路径
+    protected $addon_path;
+    // 视图模型
+    protected $appview;
+    // 插件配置
+    protected $addon_config;
+    // 插件信息
+    protected $addon_info;
+
 
     /**
-     * 架构函数
-     * @param  App  $app  应用对象
-     * @access public
+     * 插件构造函数
+     * Addons constructor.
+     * @param \think\App $app
      */
     public function __construct(App $app)
     {
@@ -51,21 +71,35 @@ class Addons
         $this->addon_config = "addon_{$this->name}_config";
         $this->addon_info = "addon_{$this->name}_info";
 
-        $this->view = clone View::engine('Think');
-        $path=ADDON_PATH . $this->name . DIRECTORY_SEPARATOR  ;
-        $this->view->layout(false);
-        $this->view->config([
-            'view_path' =>$path
+        //匹配请求网址
+        $filter=explode('/',$this->request->pathinfo());
+        //if ($filter&&array_key_exists('0',$filter)&&$filter[0] == Config::get('easyadmin.app_url_prefix')){
+            $addon=array_key_exists('1',$filter)?$filter[1]:'index';
+            $module=array_key_exists('2',$filter)?$filter[2]:'index';
+            $controller=array_key_exists('3',$filter)?$filter[3]:'index';
+            $action=array_key_exists('4',$filter)?$filter[4]:'index';
+
+        $this->path = $app->getRootPath() . 'addons'. DIRECTORY_SEPARATOR . $this->name . DIRECTORY_SEPARATOR. 'app' . DIRECTORY_SEPARATOR .$module . DIRECTORY_SEPARATOR. 'view' . DIRECTORY_SEPARATOR ;
+
+        //}
+
+        //定义视图
+        $this->appview = clone View::engine('Think');
+        //$this->appview->layout(false);
+        $this->appview->config([
+            'view_path' =>$this->path
         ]);
 
         // 控制器初始化
         $this->initialize();
     }
 
-
     // 初始化
     protected function initialize()
-    {}
+    {
+        // 加载全局初始化文件
+        $this->load();
+    }
 
     /**
      * 模板变量赋值
@@ -95,7 +129,10 @@ class Addons
     public function fetch($template = '', $vars = [])
     {
         array_merge($this->data,$vars);
-        return $this->view->fetch($template, $this->data);
+        $this->appview->config([
+            'view_path' =>$this->path
+        ]);
+        return $this->appview->fetch($template, $this->data);
     }
 
     /**
@@ -294,7 +331,7 @@ class Addons
      */
     public function display($content = '}', $vars = [])
     {
-        return $this->view->display($content, $vars);
+        return $this->appview->display($content, $vars);
     }
 
 
@@ -306,40 +343,9 @@ class Addons
      */
     public function engine($engine)
     {
-        $this->view->engine($engine);
+        $this->appview->engine($engine);
 
         return $this;
     }
 
-    /**
-     * 输出信息到控制台
-     * @param string $params
-     * @return false|mixed|string
-     * @throws \think\Exception
-     */
-    public function dashboard($params)
-    {
-        if (!file_exists($this->addon_path.'dashboard.html')){
-            return null;
-        }
-        //$this->view->layout(false);
-        $addons =$this->getInfo() ;
-        $this->assign(['params' => $params,'addons' => $addons]);
-        return $this->fetch('/dashboard');
-    }
-
-    //必须实现安装
-    public function install(){
-
-    }
-
-    //必须卸载插件方法
-    public function uninstall(){
-
-    }
-
-    //必须实现安装
-    public function menu(){
-
-    }
 }
