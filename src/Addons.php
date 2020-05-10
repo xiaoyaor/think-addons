@@ -53,7 +53,8 @@ class Addons
 
         $this->view = clone View::engine('Think');
         $path=ADDON_PATH . $this->name . DIRECTORY_SEPARATOR  ;
-        $this->view->layout(false);
+        //$this->view->layout(false);
+        //$this->view->layout('layout/default');
         $this->view->config([
             'view_path' =>$path
         ]);

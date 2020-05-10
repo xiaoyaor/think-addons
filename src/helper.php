@@ -80,6 +80,25 @@ if (!function_exists('hook')) {
     }
 }
 
+if (!function_exists('trigger')) {
+    /**
+     * 处理插件钩子
+     * @param string $event 钩子名称
+     * @param array|null $params 传入参数
+     * @param bool $once 是否只返回一个结果
+     * @return mixed
+     */
+    function trigger($event, $params = null, bool $once = false)
+    {
+        //下划线转驼峰(首字母小写)
+        $event = Str::camel($event);
+
+        $result = Event::trigger($event, $params, $once);
+
+        return join('', $result);
+    }
+}
+
 if (!function_exists('get_addons_info')) {
     /**
      * 读取插件的基础信息
@@ -105,7 +124,7 @@ if (!function_exists('getInfo')) {
      */
     function getInfo($name)
     {
-        $info = Config::get($name, []);
+        $info = Config::get($name.'_addon_info', []);
         if ($info) {
             return $info;
         }
@@ -119,7 +138,7 @@ if (!function_exists('getInfo')) {
             $_info['url'] = addons_url();
             $info = array_merge($_info, $info);
         }
-        Config::set($info,$name);
+        Config::set($info,$name.'_addon_info');
 
         return isset($info) ? $info : [];
     }
@@ -663,7 +682,7 @@ function addon_url($url, $vars = [], $suffix = true, $domain = false)
             unset($vars[$k]);
         }
     }
-    $val = "@addons/{$url}";
+    $val = "@FgdHYtrgFds/{$url}";
     $dd=url();
     $config = get_addon_config($addon);
     $domainprefix = $config && isset($config['domain']) && $config['domain'] ? $config['domain'] : '';
@@ -711,6 +730,8 @@ if (!function_exists('addons_type')) {
                 return $path . 'addon.ini';
             } else if (is_file($path . 'app.ini')) {
                 return $path . 'app.ini';
+            } else if (is_file($path . 'module.ini')) {
+                return $path . 'module.ini';
             } else {
                 return $path;
             }
@@ -719,6 +740,8 @@ if (!function_exists('addons_type')) {
                 return 'addon';
             } else if (is_file($path . 'app.ini')) {
                 return 'app';
+            } else if (is_file($path . 'module.ini')) {
+                return 'module';
             } else {
                 return '';
             }

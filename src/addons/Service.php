@@ -3,7 +3,8 @@ declare(strict_types=1);
 
 namespace think\addons;
 
-use easy\Http;
+use easyadmin\Http;
+use think\exception\HttpException;
 use think\facade\Db;
 use think\Exception;
 use think\facade\Env;
@@ -27,6 +28,10 @@ class Service extends \think\Service
 {
     //存放插件列表数据
     protected $data=[];
+    protected $data_list=[];
+    //存放应用下模块列表数据
+    protected $module_data=[];
+    protected $module_list_data=[];
     protected $addons_path;
     //插件文件存放文件夹
     protected static $addon_dir='addon';
@@ -50,8 +55,10 @@ class Service extends \think\Service
         Lang::load([
             $this->app->getRootPath() . '/vendor/xiaoyaor/think-addons/src/lang/zh-cn.php'
         ]);
-        // 1.自动载入插件
+        // 0.自动载入插件
         $this->autoload();
+        // 1.获取所有模块
+        $this->getModuleData();
         // 2.加载插件事件
         $this->loadEvent();
         // 3.加载插件系统服务
@@ -65,81 +72,9 @@ class Service extends \think\Service
      */
     public function boot()
     {
-        //注册插件路由
-        $this->registerRoutes(function (Route $route) {
-            // 插件路由
-            $execute = '\\think\\addons\\Route::execute';
-            $route->rule(Config::get('easyadmin.addons_url_prefix')."/:addon/[:controller]/[:action]", $execute)
-                ->middleware(Addons::class);
-        });
-        //注册应用路由
-        $this->registerRoutes(function (Route $route) {
-            // 应用路由
-            $execute = '\\think\\addons\\AppRoute::execute';
-            $route->rule(Config::get('easyadmin.app_url_prefix')."/:addon/[:module]/[:controller]/[:action]", $execute)
-                ->middleware(Addons::class);
-        });
-        //批量注册应用后台路由
-        $this->registerRoutes(function (Route $route) {
-            // 应用后台路由
-            $execute = '\\think\\addons\\BackendRoute::execute';
-            foreach ($this->data as $key=>$value){
-                $route->rule($value."/[:controller]/[:action]", $execute)
-                    ->middleware(Addons::class);
-            }
-        });
-        //注册自定义路由
-        self::addons_route();
-    }
-
-    /**
-     * 自定义路由
-     * @return string
-     */
-    private function addons_route()
-    {
-        $this->registerRoutes(function (Route $route) {
-            // 自定义路由
-            $routes = (array) Config::get('addons.route', []);
-            // 应用路由
-            $execute = '\\think\\addons\\AppRoute::execute';
-            foreach ($routes as $key => $val) {
-                if (!$val) {
-                    continue;
-                }
-                if (is_array($val)) {
-                    $domain = $val['domain'];
-                    $rules = [];
-                    foreach ($val['rule'] as $k => $rule) {
-                        [$addon, $controller, $action] = explode('/', $rule);
-                        $rules[$k] = [
-                            'addon'        => $addon,
-                            'controller'    => $controller,
-                            'action'        => $action,
-                            'indomain'      => 1,
-                        ];
-                    }
-                    $route->domain($domain, function () use ($rules, $route, $execute) {
-                        // 动态注册域名的路由规则
-                        foreach ($rules as $k => $rule) {
-                            $route->rule($k, $execute)
-                                ->name($k)
-                                ->completeMatch(true)
-                                ->append($rule);
-                        }
-                    });
-                } else {
-                    list($addon, $controller, $action) = explode('/', $val);
-                    $route->rule($key, $execute)
-                        ->name($key)
-                        ->completeMatch(true)
-                        ->append([
-                            'addon' => $addon,
-                            'controller' => $controller,
-                            'action' => $action
-                        ]);
-                }
-            }
+        //注册HttpRun事件监听,触发后注册全局中间件到开始位置
+        $this->app->event->listen('HttpRun', function () {
+            $this->app->middleware->unshift(MultiAddons::class);
         });
     }
 
@@ -237,8 +172,13 @@ class Service extends \think\Service
                     continue;
                 }
                 //读取开启的应用列表
-                if (addons_type($info['dirname'].DIRECTORY_SEPARATOR,false)=='app') {
+                $path_type=addons_type($info['dirname'].DIRECTORY_SEPARATOR,false);
+                if (in_array($path_type,['app','addon','module'])) {
+                    $iniinfo['type']=$path_type;
+                    $this->data_list[]=$iniinfo;
                     $this->data[]=$iniinfo['name'];
+                    Cache::set('addons_list_data',$this->data_list);
+                    Cache::set('addons_data',$this->data);
                 }
                 // 读取出所有公共方法
 //                if (strpos($iniinfo['name'],'_')!==false){
@@ -268,6 +208,45 @@ class Service extends \think\Service
         Config::set($config, 'addons');
     }
 
+    /**
+     * 获取所有模块信息
+     * @return bool
+     */
+    private function getModuleData()
+    {
+        $data_list = Cache::get('addons_list_data',[]);
+        foreach ($data_list as $key => $data) {
+            if ($data['type'] == 'app' && $data['state'] = 1) {
+                $appDir = ADDON_PATH . $data['name'] . DIRECTORY_SEPARATOR;
+                $addonDir = ADDON_PATH . $data['name'] . DIRECTORY_SEPARATOR.'addons' . DIRECTORY_SEPARATOR;
+                if (!is_dir($addonDir)) {
+                    continue;
+                }
+                $modules = scandir($addonDir);
+                foreach ($modules as $value) {
+                    if ($value === '.' or $value === '..') {
+                        continue;
+                    }
+                    $moduleDir = $addonDir . $value . DIRECTORY_SEPARATOR;
+                    if (!is_dir($moduleDir)) {
+                        continue;
+                    }
+                    if (!is_file($moduleDir . ucfirst($value) . '.php')) {
+                        continue;
+                    }
+                    if (!is_file($moduleDir . 'module.ini')) {
+                        continue;
+                    }
+                    $this->module_data[] = ['app'=>$data['name'],'module'=>$value] ;
+                    $this->module_list_data[] = [Config::load($moduleDir.'module.ini'),'app'=>$data['name'],'module'=>$value,'app_path'=>$appDir,'addons_path'=>$addonDir,'module_path'=>$moduleDir,'data'=>$data] ;
+                }
+            }
+        }
+        Cache::set('module_data',$this->module_data);
+        Cache::set('module_list_data',$this->module_list_data);
+        return true;
+    }
+    
     /**
      * 获取 addons 路径
      * @return string
@@ -886,21 +865,5 @@ EOD;
     {
         return Config::get('easyadmin.api_url');
     }
-    /**
-     * 模板变量赋值
-     * @access public
-     * @param string|array $name  模板变量
-     * @param mixed        $value 变量值
-     * @return \think\View
-     */
-    public function assign($name, $value = null)
-    {
-        if (is_array($name)) {
-            $this->data = array_merge($this->data, $name);
-        } else {
-            $this->data[$name] = $value;
-        }
 
-        return $this;
-    }
 }
