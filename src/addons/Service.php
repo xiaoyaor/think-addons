@@ -76,6 +76,13 @@ class Service extends \think\Service
         $this->app->event->listen('HttpRun', function () {
             $this->app->middleware->unshift(MultiAddons::class);
         });
+        $this->commands([
+            'build' => command\Build::class,
+            'clear' => command\Clear::class,
+        ]);
+        $this->app->bind([
+            'think\route\Url' => Url::class,
+        ]);
     }
 
     /**
