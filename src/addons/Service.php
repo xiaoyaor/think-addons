@@ -26,9 +26,12 @@ use ZipArchive;
  */
 class Service extends \think\Service
 {
-    //存放插件列表数据
+    //存放[插件名称]列表数据
     protected $data=[];
+    //存放[插件ini所有信息]列表数据
     protected $data_list=[];
+    //模块所有[config.php]里的信息存放
+    protected $config_data_list=[];
     //存放应用下模块列表数据
     protected $module_data=[];
     protected $module_list_data=[];
@@ -55,11 +58,11 @@ class Service extends \think\Service
         Lang::load([
             $this->app->getRootPath() . '/vendor/xiaoyaor/think-addons/src/lang/zh-cn.php'
         ]);
-        // 0.自动载入插件
+        // 0.自动载入插件addons
         $this->autoload();
-        // 1.获取所有模块
+        // 1.获取所有模块modules
         $this->getModuleData();
-        // 2.加载插件事件
+        // 2.注册插件事件hook
         $this->loadEvent();
         // 3.加载插件系统服务
         $this->loadService();
@@ -182,10 +185,9 @@ class Service extends \think\Service
                 $path_type=addons_type($info['dirname'].DIRECTORY_SEPARATOR,false);
                 if (in_array($path_type,['app','addon','module'])) {
                     $iniinfo['type']=$path_type;
-                    $this->data_list[]=$iniinfo;
                     $this->data[]=$iniinfo['name'];
-                    Cache::set('addons_list_data',$this->data_list);
-                    Cache::set('addons_data',$this->data);
+                    $this->data_list[]=$iniinfo;
+                    $this->config_data_list[] = include addons_config($info['dirname'].DIRECTORY_SEPARATOR);
                 }
                 // 读取出所有公共方法
 //                if (strpos($iniinfo['name'],'_')!==false){
@@ -212,6 +214,12 @@ class Service extends \think\Service
                 }
             }
         }
+
+        Cache::set('addons_list_data',$this->data_list);
+        Cache::set('addons_data',$this->data);
+        Cache::set('config_data_list',$this->config_data_list);
+        Cache::set('domain_list',get_addon_config_value($this->config_data_list,'domain'));
+        Cache::set('rule_list',get_addon_config_value($this->config_data_list,'rule'));
         Config::set($config, 'addons');
     }
 
@@ -549,11 +557,43 @@ EOD;
             if (!$force) {
                 Service::noconflict($name);
             }
+
+            $info = get_addon_info($name);
+            //检查依赖插件
+            $temp=Cache::get('addons_data',[]);
+            if ($info['depend']) {
+                $depend=explode(',',$info['depend']);
+                foreach ($depend as $item) {
+                    if (!in_array($item,$temp)) {
+                        @rmdirs($addonDir);
+                        throw new Exception('['.$item.']'."插件未安装或启用,请检查！");
+                    }
+                }
+            }
+
         } catch (AddonException $e) {
             @rmdirs($addonDir);
             throw new AddonException($e->getMessage(), $e->getCode(), $e->getData());
         } catch (Exception $e) {
             @rmdirs($addonDir);
+            throw new Exception($e->getMessage());
+        }
+
+        try {
+            // 默认启用该插件
+            $info = get_addon_info($name);
+            if (!$info['state']) {
+                $info['state'] = 1;
+                set_addon_info($name, $info);
+            }
+
+            // 执行安装脚本
+            $class = get_addon_class($name);
+            if (class_exists($class)) {
+                $addon = new $class(app());
+                $addon->install();
+            }
+        } catch (Exception $e) {
             throw new Exception($e->getMessage());
         }
 
@@ -777,7 +817,7 @@ EOD;
         try {
             $class = get_addon_class($name);
             if (class_exists($class)) {
-                $addon = new $class();
+                $addon = new $class(app());
 
                 if (method_exists($class, "upgrade")) {
                     $addon->upgrade();

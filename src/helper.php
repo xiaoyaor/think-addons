@@ -253,50 +253,6 @@ if (!function_exists('addons_url')) {
     }
 }
 
-if (!function_exists('addons_url2')) {
-    /**
-     * 插件显示内容里生成访问插件的url
-     * @param $url
-     * @param array $param
-     * @param bool|string $suffix 生成的URL后缀
-     * @param bool|string $domain 域名
-     * @return bool|string
-     */
-    function addons_url2($url = '', $param = [], $suffix = true, $domain = false)
-    {
-        $request = app('request');
-        if (empty($url)) {
-            // 生成 url 模板变量
-            $addons = $request->addon;
-            $controller = $request->controller();
-            $controller = str_replace('/', '.', $controller);
-            $action = $request->action();
-        } else {
-            $url = Str::studly($url);
-            $url = parse_url($url);
-            if (isset($url['scheme'])) {
-                $addons = strtolower($url['scheme']);
-                $controller = $url['host'];
-                $action = trim($url['path'], '/');
-            } else {
-                $route = explode('/', $url['path']);
-                $addons = $request->addon.'.admin';
-                $action = array_pop($route);
-                $controller = array_pop($route) ?: $request->controller();
-            }
-            $controller = Str::snake((string)$controller);
-
-            /* 解析URL带的参数 */
-            if (isset($url['query'])) {
-                parse_str($url['query'], $query);
-                $param = array_merge($query, $param);
-            }
-        }
-
-        return Route::buildUrl("@addons.{$addons}/{$controller}/{$action}", $param)->suffix($suffix)->domain($domain);
-    }
-}
-
 if (!function_exists('get_addon_list')) {
 
     /**
@@ -501,6 +457,30 @@ if (!function_exists('get_addon_fullconfig')) {
             return [];
         }
         return $addon->getFullConfig($name);
+    }
+}
+
+if (!function_exists('get_addon_config_value')) {
+
+    /**
+     * 获取插件类的指定配置
+     * @param array $list 数组
+     * @param string $name 值
+     * @return array
+     */
+    function get_addon_config_value($list,$name)
+    {
+        $arr=[];
+        foreach ($list as $item) {
+            foreach ($item as $item2) {
+                if ($item2['name'] == $name) {
+                    if ($item2['value']) {
+                        $arr[]=$item2['value'];
+                    }
+                }
+            }
+        }
+        return $arr;
     }
 }
 
@@ -746,5 +726,32 @@ if (!function_exists('addons_type')) {
                 return '';
             }
         }
+    }
+}
+
+if (!function_exists('addons_config')) {
+    /**
+     * 返回插件的config.php
+     * @param string $path 插件路径
+     * @return mixed
+     */
+    function addons_config($path)
+    {
+        if (is_file($path . 'config.php')) {
+            return $path . 'config.php';
+        } else {
+            return $path;
+        }
+    }
+}
+
+if (!function_exists('remove_ext')) {
+    /**
+     * 去掉'.'后的后缀名
+     * @param string $str 字符串
+     */
+    function remove_ext($str)
+    {
+        return str_replace(strrchr($str, "."),"",$str);
     }
 }

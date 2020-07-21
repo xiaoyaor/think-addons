@@ -216,7 +216,7 @@ class Addons
         }
         $config = $this->getConfig($name);
         $config = array_merge($config, $value);
-        Config::set($name, $config, $this->configRange);
+        Config::set( $config,$name);
         return $config;
     }
 
