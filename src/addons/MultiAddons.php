@@ -137,6 +137,7 @@ class MultiAddons
                     return $this->parseMultiApp();//【系统绑定子域名】
                 }
             }
+            //---有插件自定义绑定域名信息
             if ($domain_list) {
                 // 获取当前子域名
                 $subDomain = $this->app->request->subDomain();
@@ -176,6 +177,17 @@ class MultiAddons
                 } elseif ($name && isset($map['*'])) {
                     return $this->parseMultiApp();//【系统模块绑定映射】
                 } else {
+
+                    //xxxxsite.php里网站首页自定义绑定
+                    $homepage = $this->app->config->get('site.homepage') ?: '';
+                    if ($homepage&&!$path) {
+                        $list = explode('/', $homepage);
+                        $this->addonsName=$list[1];
+                        $config=ADDON_PATH.$this->addonsName.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'app.php';
+                        $this->app->request->addonsName=$this->addonsName;
+                        $con=$this->app->config->load($config,'app_'.$this->addonsName);
+                        return $this->parseMultiAddons($this->addonsName);//【应用模块绑定映射】
+                    }
 
                     //xxxxconfig.php里规则绑定
                     foreach ($rule_list as $k=>$val){
@@ -245,22 +257,6 @@ class MultiAddons
                                     return $this->parseMultiAddons($this->addonsName);//【应用模块绑定映射】
                                 }
                             }
-                        }
-                    }
-
-                    //xxxx其他常规无子域名无映射规则URL：http://域名/模块/名称【应用||插件】/控制器/行为/参数
-                    $path = $this->app->request->pathinfo();
-                    $list=explode('/', $path);
-                    $name = current($list);//模块
-                    if (strpos($name, '.')) {
-                        $name = strstr($name, '.', true);
-                    }
-                    $module = key_exists(1,$list)?$list[1]:'index';//名称【应用||插件】
-                    $module = remove_ext($module);
-
-                    foreach ($data_list as $key=>$value){
-                        if ($value['name'] == $module ){
-                            return $this->parseMultiModules($value['name'],$name);//【系统常规URL解析】
                         }
                     }
 
@@ -552,6 +548,27 @@ class MultiAddons
         // 获取当前子域名
         $subDomain = $this->app->request->subDomain();
         $domain    = $this->app->request->host(true);
+
+        //xxxxsite.php里网站首页自定义绑定
+        $homepage = $this->app->config->get('site.homepage') ?: '';
+        if ($homepage&&!$path) {
+            $list = explode('/', $homepage);
+            $this->addonsName=$list[1];
+            $config=ADDON_PATH.$this->addonsName.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'app.php';
+            $this->app->request->addonsName=$this->addonsName;
+            $con=$this->app->config->load($config,'app_'.$this->addonsName);
+
+
+            if ($homepage&&!$path){
+                $appName = $list[0] ?: $defaultApp;
+                if ($name) {
+                    $this->app->request->setRoot('/' . $name);
+                    $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+                }
+            }
+            $this->setAddons($appName ?: $defaultApp,$addonsName);
+            return true;
+        }
 
         //xxxx解析config.php里域名绑定
         foreach ($domain_list as $k=>$val){
@@ -938,62 +955,6 @@ class MultiAddons
         $this->setApp($appName ?: $defaultApp);
         return true;
     }
-
-
-    /**
-     * 解析addons下的应用的带域名多应用
-     * @param string $addonsName 名称 $addonsname
-     * @param string $modulesname 模块 $modulesname
-     * @return bool
-     */
-    protected function parseMultiModules($addonsName,$modulesname): bool
-    {
-        //插件信息列表
-        $data_list=Cache::get('addons_list_data',[]);
-        $modules_list=Cache::get('module_list_data',[]);
-        $scriptName = $this->getScriptName();
-        $defaultApp = $this->app->config->get('app.default_app') ?: 'index';
-
-        //遍历应用下的模块并匹配URL
-        $path = $this->app->request->pathinfo();
-        $list=explode('/', $path);
-        $name = $addonsName;
-        $module = key_exists(2,$list)?$list[2]:'index';
-        $module = remove_ext($module);
-        $appName=$modulesname;
-        $this->addonsName=$addonsName;
-
-        //模块URL
-        foreach ($modules_list as $key2=>$value2){
-            if ($value2['app']==$addonsName && $value2['module']==$module){
-                //$appName=$modulesname;
-                if ($name) {
-                    $this->app->request->setRoot('/' . $name);
-                    $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
-                    $path=$this->app->request->pathinfo();
-                    $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
-                    $path=$this->app->request->pathinfo();
-                    $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
-                    //$path=$this->app->request->pathinfo();
-                }
-                $this->setModules($appName ?: $defaultApp,$addonsName,$modulesname);
-                return true;
-            }
-        }
-
-
-        //插件URL
-        if ($name) {
-            $this->app->request->setRoot('/' . $name);
-            $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
-            $path=$this->app->request->pathinfo();
-            $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
-            //$path=$this->app->request->pathinfo();
-        }
-        $this->setAddons($appName ?: $defaultApp,$addonsName);
-        return true;
-
-    }
     
     /**
      * 设置应用
@@ -1052,45 +1013,6 @@ class MultiAddons
             //加载插件应用app下的
             $this->loadApp($appName, ADDON_PATH.$addonsName .DIRECTORY_SEPARATOR .'app'. DIRECTORY_SEPARATOR);
             //加载插件应用app下模块下的文件
-            $this->loadApp($appName, $appPath);
-        }
-    }
-
-    /**
-     * 设置应用
-     * @param string $appName
-     * @param string $addonsName
-     * @param string $modulesName
-     */
-    protected function setModules(string $appName,string $addonsName,string $modulesName): void
-    {
-        $this->appName = $appName;
-        $this->app->http->name($appName);
-        $this->app->request->appName=$appName;
-        $this->app->request->addonsName=$addonsName;
-        $this->app->request->modulesName=$modulesName;
-
-        $appPath = $this->path ?: ADDON_PATH.$addonsName . DIRECTORY_SEPARATOR.'addons'.DIRECTORY_SEPARATOR.$modulesName.DIRECTORY_SEPARATOR.'app'. DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR;
-
-        $this->app->setAppPath($appPath);
-
-        //$app_namespace=$this->app->config->get('app_'.$this->addonsName.'.app_namespace');
-        //$app_namespace='addons\\'.$this->addonsName.'\\';
-        $app_namespace='addons\\'.$addonsName . '\\'.'addons'.'\\'.$modulesName.'\\';
-
-
-        // 设置应用命名空间
-        $this->app->setNamespace($app_namespace.'app\\'.$appName ?: 'app\\' . $appName);
-
-        if (is_dir($appPath)) {
-            $this->app->setRuntimePath($this->app->getRuntimePath() . $appName . DIRECTORY_SEPARATOR);
-            $this->app->http->setRoutePath($this->getRoutePath());
-
-            //加载应用文件
-            $this->loadApp($appName, root_path().'app' . DIRECTORY_SEPARATOR . $appName. DIRECTORY_SEPARATOR);
-            //加载应用文件
-            $this->loadApp($appName, ADDON_PATH.$addonsName . DIRECTORY_SEPARATOR);
-            //加载插件应用文件
             $this->loadApp($appName, $appPath);
         }
     }
