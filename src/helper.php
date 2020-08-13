@@ -755,3 +755,20 @@ if (!function_exists('remove_ext')) {
         return str_replace(strrchr($str, "."),"",$str);
     }
 }
+
+if (!function_exists('get_addon_singleinfo')) {
+    /**
+     * 获取所有插件的配置文件的简化配置信息config.php，只取name和value
+     * @param array $data 数组
+     */
+    function get_addon_singleinfo($data)
+    {
+        $addon=[];
+        foreach ($data as $key => $item) {
+            foreach ($item as $key2 => $item2) {
+                $addon[$key][$item2['name']]=$item2['value'];
+            }
+        }
+        return $addon;
+    }
+}

@@ -48,8 +48,8 @@ class Addons
         $this->request = $app->request;
         $this->name = $this->getName();
         $this->addon_path = $app->getRootPath() . 'addons'. DIRECTORY_SEPARATOR . $this->name . DIRECTORY_SEPARATOR;
-        $this->addon_config = "addon_{$this->name}_config";
         $this->addon_info = "addon_{$this->name}_info";
+        $this->addon_config = "addon_{$this->name}_config";
 
         $this->view = clone View::engine('Think');
         $path=ADDON_PATH . $this->name . DIRECTORY_SEPARATOR  ;

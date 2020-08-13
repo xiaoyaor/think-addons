@@ -186,8 +186,8 @@ class Service extends \think\Service
                 if (in_array($path_type,['app','addon','module'])) {
                     $iniinfo['type']=$path_type;
                     $this->data[]=$iniinfo['name'];
-                    $this->data_list[]=$iniinfo;
-                    $this->config_data_list[] = include addons_config($info['dirname'].DIRECTORY_SEPARATOR);
+                    $this->data_list[$iniinfo['name']]=$iniinfo;
+                    $this->config_data_list[$iniinfo['name']] = include addons_config($info['dirname'].DIRECTORY_SEPARATOR);
                 }
                 // 读取出所有公共方法
 //                if (strpos($iniinfo['name'],'_')!==false){
@@ -214,12 +214,20 @@ class Service extends \think\Service
                 }
             }
         }
-
-        Cache::set('addons_list_data',$this->data_list);
+        //缓存
+        //插件列表
         Cache::set('addons_data',$this->data);
+        //插件ini列表
+        Cache::set('addons_list_data',$this->data_list);
+        //插件config列表
         Cache::set('config_data_list',$this->config_data_list);
+        //插件config简化列表
+        Cache::set('config_data_single_list',get_addon_singleinfo($this->config_data_list));
+        //插件域名路由列表
         Cache::set('domain_list',get_addon_config_value($this->config_data_list,'domain'));
+        //插件规则路由列表
         Cache::set('rule_list',get_addon_config_value($this->config_data_list,'rule'));
+        //插件信息保存到Config
         Config::set($config, 'addons');
     }
 
