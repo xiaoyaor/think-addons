@@ -508,8 +508,9 @@ class MultiAddons
                     if ($key==$subDomain){
                         $appName = $list[0] ?: $defaultApp;
                         if ($name) {
-                            $this->app->request->setRoot('/' . $name);
-                            $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+                            $this->app->request->setRoot('');
+                            //$this->app->request->setRoot('/' . $name);
+                            //$this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
                         }
                     }
                     $this->setAddons($appName ?: $defaultApp,$addonsName);
