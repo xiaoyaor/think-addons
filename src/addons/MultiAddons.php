@@ -442,8 +442,9 @@ class MultiAddons
                         $express = $this->app->config->get('app.app_express', false);
                         if ($express) {
                             //开启插件快速访问
-                            if (config('site.default_app')&&config('site.default_addons')){
-                                $this->setAddons(config('site.default_app'),config('site.default_addons'));
+                            if (config('site.default_app')){
+                                $default_app=explode('/',config('site.default_app'));
+                                $this->setAddons($default_app[0],$default_app[1]);
                             }else{
                                 //tp6快速访问
                                 $this->setApp($defaultApp);
