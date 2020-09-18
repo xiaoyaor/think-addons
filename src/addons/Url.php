@@ -140,9 +140,9 @@ class Url extends UrlBuild
                 $suffix = $match[2];
             }
 
-            if (!$this->app->http->isBind()) {
-                $url = $this->app->http->getName() . '/' . $url;
-            }
+//            if (!$this->app->http->isBind()) {
+//                $url = $this->app->http->getName() . '/' . $url;
+//            }
         } elseif (!empty($rule) && isset($name)) {
             throw new \InvalidArgumentException('route name not exists:' . $name);
         } else {
