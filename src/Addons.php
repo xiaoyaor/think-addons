@@ -298,7 +298,6 @@ class Addons
         return $this->view->display($content, $vars);
     }
 
-
     /**
      * 初始化模板引擎
      * @access public
@@ -310,23 +309,6 @@ class Addons
         $this->view->engine($engine);
 
         return $this;
-    }
-
-    /**
-     * 输出信息到控制台
-     * @param string $params
-     * @return false|mixed|string
-     * @throws \think\Exception
-     */
-    public function dashboard($params)
-    {
-        if (!file_exists($this->addon_path.'dashboard.html')){
-            return null;
-        }
-        //$this->view->layout(false);
-        $addons =$this->getInfo() ;
-        $this->assign(['params' => $params,'addons' => $addons]);
-        return $this->fetch('/dashboard');
     }
 
     //必须实现安装
@@ -342,5 +324,24 @@ class Addons
     //必须实现安装
     public function menu(){
 
+    }
+
+    /**
+     * 输出信息到控制台
+     * @param string $params
+     * @param array $data
+     * @return false|mixed|string
+     * @throws \think\Exception
+     */
+    public function dashboard($params,$data=[])
+    {
+        if (!file_exists($this->addon_path.'dashboard.html')){
+            return null;
+        }
+        //$this->view->layout(false);
+        $addons =$this->getInfo() ;
+        $this->assign(['params' => $params,'addons' => $addons]);
+        $this->assign($data);
+        return $this->fetch('/dashboard');
     }
 }

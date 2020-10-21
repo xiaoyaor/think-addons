@@ -8,6 +8,7 @@ use think\exception\HttpException;
 use think\facade\Db;
 use think\Exception;
 use think\facade\Env;
+use think\facade\View;
 use think\Route;
 use think\helper\Str;
 use think\facade\Config;
@@ -32,10 +33,9 @@ class Service extends \think\Service
     protected $data_list=[];
     //模块所有[config.php]里的信息存放
     protected $config_data_list=[];
-    //存放应用下模块列表数据
-    protected $module_data=[];
-    protected $module_list_data=[];
     protected $addons_path;
+    //插件sort排序
+    protected $addons_sort;
     //插件文件存放文件夹
     protected static $addon_dir='addon';
     //缓存文件夹，插件关闭后可删除
@@ -44,7 +44,7 @@ class Service extends \think\Service
     protected static $conflict_dir='cache/conflict/';
     //网站数据库文件存放文件夹
     protected static $mysql_dir='mysql';
-
+    
     /**
      * 注册服务
      */
@@ -60,8 +60,6 @@ class Service extends \think\Service
         ]);
         // 0.自动载入插件addons
         $this->autoload();
-        // 1.获取所有模块modules
-        $this->getModuleData();
         // 2.注册插件事件hook
         $this->loadEvent();
         // 3.加载插件系统服务
@@ -164,8 +162,33 @@ class Service extends \think\Service
         $config = Config::get('addons');
         // 读取插件目录及钩子列表
         $base = get_class_methods("\\think\\Addons");
-        // 读取插件目录中的php文件
+        // 读取插件目录中的自定义插件顺序
         foreach (glob($this->getAddonsPath() . '*/*.php') as $addons_file) {
+            // 格式化路径信息
+            $info = pathinfo($addons_file);
+            // 获取插件目录名
+            $name = str::studly(pathinfo($info['dirname'], PATHINFO_FILENAME));
+            // 找到插件入口文件
+            if (strtolower($info['filename']) === strtolower($name)) {
+                //插件关闭后不加载事件
+                $ini_file = addons_type($info['dirname'].DIRECTORY_SEPARATOR);
+                if (!is_file($ini_file)) {
+                    continue;
+                }
+                $iniinfo = parse_ini_file($ini_file, true, INI_SCANNER_TYPED) ?: [];
+                if (!$iniinfo['state']) {
+                    continue;
+                }
+                $this->addons_sort[] = ['name'=>$iniinfo['name'],'sort'=>isset($iniinfo['sort'])?$iniinfo['sort']:0];
+                $this->addons_sort = array_sequence($this->addons_sort,'sort');
+            }
+        }
+        $addons_filelist =[];
+        foreach ($this->addons_sort as $item) {
+            $addons_filelist[] =$this->getAddonsPath() .$item['name'].'/'.str::studly($item['name']).'.php';
+        }
+        // 读取插件目录中的php文件
+        foreach ($addons_filelist as $addons_file) {
             // 格式化路径信息
             $info = pathinfo($addons_file);
             // 获取插件目录名
@@ -183,7 +206,7 @@ class Service extends \think\Service
                 }
                 //读取开启的应用列表
                 $path_type=addons_type($info['dirname'].DIRECTORY_SEPARATOR,false);
-                if (in_array($path_type,['app','addon','module'])) {
+                if (in_array($path_type,['addon'])) {
                     $iniinfo['type']=$path_type;
                     $this->data[]=$iniinfo['name'];
                     $this->data_list[$iniinfo['name']]=$iniinfo;
@@ -229,45 +252,6 @@ class Service extends \think\Service
         Cache::set('rule_list',get_addon_config_value($this->config_data_list,'rule'));
         //插件信息保存到Config
         Config::set($config, 'addons');
-    }
-
-    /**
-     * 获取所有模块信息
-     * @return bool
-     */
-    private function getModuleData()
-    {
-        $data_list = Cache::get('addons_list_data',[]);
-        foreach ($data_list as $key => $data) {
-            if ($data['type'] == 'app' && $data['state'] = 1) {
-                $appDir = ADDON_PATH . $data['name'] . DIRECTORY_SEPARATOR;
-                $addonDir = ADDON_PATH . $data['name'] . DIRECTORY_SEPARATOR.'addons' . DIRECTORY_SEPARATOR;
-                if (!is_dir($addonDir)) {
-                    continue;
-                }
-                $modules = scandir($addonDir);
-                foreach ($modules as $value) {
-                    if ($value === '.' or $value === '..') {
-                        continue;
-                    }
-                    $moduleDir = $addonDir . $value . DIRECTORY_SEPARATOR;
-                    if (!is_dir($moduleDir)) {
-                        continue;
-                    }
-                    if (!is_file($moduleDir . ucfirst($value) . '.php')) {
-                        continue;
-                    }
-                    if (!is_file($moduleDir . 'module.ini')) {
-                        continue;
-                    }
-                    $this->module_data[] = ['app'=>$data['name'],'module'=>$value] ;
-                    $this->module_list_data[] = [Config::load($moduleDir.'module.ini'),'app'=>$data['name'],'module'=>$value,'app_path'=>$appDir,'addons_path'=>$addonDir,'module_path'=>$moduleDir,'data'=>$data] ;
-                }
-            }
-        }
-        Cache::set('module_data',$this->module_data);
-        Cache::set('module_list_data',$this->module_list_data);
-        return true;
     }
     
     /**

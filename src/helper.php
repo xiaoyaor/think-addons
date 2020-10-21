@@ -708,20 +708,12 @@ if (!function_exists('addons_type')) {
         if ($type) {
             if (is_file($path . 'addon.ini')) {
                 return $path . 'addon.ini';
-            } else if (is_file($path . 'app.ini')) {
-                return $path . 'app.ini';
-            } else if (is_file($path . 'module.ini')) {
-                return $path . 'module.ini';
-            } else {
+            } else{
                 return $path;
             }
         } else {
             if (is_file($path . 'addon.ini')) {
                 return 'addon';
-            } else if (is_file($path . 'app.ini')) {
-                return 'app';
-            } else if (is_file($path . 'module.ini')) {
-                return 'module';
             } else {
                 return '';
             }
@@ -770,5 +762,24 @@ if (!function_exists('get_addon_singleinfo')) {
             }
         }
         return $addon;
+    }
+}
+
+if (!function_exists('array_sequence')) {
+    /**
+     * 二维数组按照指定字段进行排序
+     * @params array $array 需要排序的数组
+     * @params string $field 排序的字段
+     * @params string $sort 排序顺序标志 SORT_DESC 降序；SORT_ASC 升序
+     */
+    function array_sequence($array, $field, $sort = 'SORT_DESC') {
+        $arrSort = array();
+        foreach ($array as $uniqid => $row) {
+            foreach ($row as $key => $value) {
+                $arrSort[$key][$uniqid] = $value;
+            }
+        }
+        array_multisort($arrSort[$field], constant($sort), $array);
+        return $array;
     }
 }

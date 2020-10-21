@@ -65,14 +65,14 @@ class MultiAddons
      * 相对路径：/addons/demo/addons/dev/app/admin/controller/sample.php
      * @var array
     protected $data=[
-    'appName'=>'',
-    'addonsName'=>'',
-    'modulesName'=>''
+        'appName'=>'',
+        'addonsName'=>'',
+        'modulesName'=>''
     ];
     $this->app->request->appName=$appName;
     $this->app->request->addonsName=$addonsName;
     $this->app->request->modulesName=$modulesName;
-     */
+    */
 
     public function __construct(App $app)
     {
@@ -482,8 +482,6 @@ class MultiAddons
         $domain_list=Cache::get('domain_list',[]);
         //规则绑定列表
         $rule_list=Cache::get('rule_list',[]);
-        //模块列表信息
-        $modules_list=Cache::get('module_list_data',[]);
         $scriptName = $this->getScriptName();
         $defaultApp = $this->app->config->get('app.default_app') ?: 'index';
 
@@ -706,7 +704,7 @@ class MultiAddons
         $this->setApp($appName ?: $defaultApp);
         return true;
     }
-
+    
     /**
      * 设置应用
      * @param string $appName
@@ -767,7 +765,7 @@ class MultiAddons
             $this->loadApp($appName, $appPath);
         }
     }
-
+    
     /**
      * 加载应用文件
      * @param string $appName 应用名
