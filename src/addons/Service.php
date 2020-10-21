@@ -35,7 +35,7 @@ class Service extends \think\Service
     protected $config_data_list=[];
     protected $addons_path;
     //插件sort排序
-    protected $addons_sort;
+    protected $addons_sort=[];
     //插件文件存放文件夹
     protected static $addon_dir='addon';
     //缓存文件夹，插件关闭后可删除
