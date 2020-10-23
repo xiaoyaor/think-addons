@@ -553,7 +553,7 @@ EOD;
             $info = get_addon_info($name);
             //检查依赖插件
             $temp=Cache::get('addons_data',[]);
-            if ($info['depend']) {
+            if (isset($info['depend'])) {
                 $depend=explode(',',$info['depend']);
                 foreach ($depend as $item) {
                     if (!in_array($item,$temp)) {
