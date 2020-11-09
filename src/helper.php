@@ -681,7 +681,7 @@ function addon_url($url, $vars = [], $suffix = true, $domain = false)
             }
         } else {
             // 如果采用了域名部署,则需要去掉前两段
-            if ($indomain && $domainprefix) {
+            if ($domainprefix) {
                 $arr = explode("/", $val);
                 $val = implode("/", array_slice($arr, 2));
             }
