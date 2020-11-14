@@ -474,7 +474,7 @@ if (!function_exists('get_addon_config_value')) {
         foreach ($list as $item) {
             foreach ($item as $item2) {
                 if ($item2['name'] == $name) {
-                    if ($item2['value']) {
+                    if ($item2['value']&&$item2['value']!='[]') {
                         $arr[]=$item2['value'];
                     }
                 }
