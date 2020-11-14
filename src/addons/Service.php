@@ -252,10 +252,6 @@ class Service extends \think\Service
         Cache::set('rule_list',get_addon_config_value($this->config_data_list,'rule'));
         //插件配置信息保存到Config
         Config::set($config, 'addons');
-        //所有插件addon.ini信息保存到Config
-        Config::set(Cache::get('addons_list_data',[]), 'addons_ini');
-        //所有插件config.php信息保存到Config
-        Config::set(Cache::get('config_data_single_list',[]), 'addons_config');
     }
     
     /**
