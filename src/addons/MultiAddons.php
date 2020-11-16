@@ -284,7 +284,7 @@ class MultiAddons
                             $appPath = $this->path ?: ADDON_PATH.$this->addonsName . DIRECTORY_SEPARATOR.'app'. DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR;;
 
                             if (!is_dir($appPath)) {
-                                $this->express($defaultApp);
+                                return $this->express($defaultApp);
                             }
                         }
                         if ($name) {
@@ -326,7 +326,7 @@ class MultiAddons
                     //$appPath = $this->path ?: ADDON_PATH.$this->addonsName . DIRECTORY_SEPARATOR.'app'. DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR;;
 
                     if (!is_dir($appPath)) {
-                        $this->express($defaultApp);
+                        return $this->express($defaultApp);
                     }
                 }
                 if ($name) {
@@ -376,7 +376,7 @@ class MultiAddons
                                 $appPath = $this->path ?: ADDON_PATH.$this->addonsName . DIRECTORY_SEPARATOR.'app'. DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR;;
 
                                 if (!is_dir($appPath)) {
-                                    $this->express($defaultApp);
+                                    return $this->express($defaultApp);
                                 }
                             }
                             if ($name) {
@@ -421,7 +421,7 @@ class MultiAddons
                     //$appPath = $this->path ?: ADDON_PATH.$this->addonsName . DIRECTORY_SEPARATOR.'app'. DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR;;
 
                     if (!is_dir($appPath)) {
-                        $this->express($defaultApp);
+                        return $this->express($defaultApp);
                     }
                 }
                 if ($name) {
@@ -609,7 +609,7 @@ class MultiAddons
                         $appPath = $this->path ?: ADDON_PATH.$this->addonsName . DIRECTORY_SEPARATOR.'app'. DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR;;
 
                         if (!is_dir($appPath)) {
-                            $this->express($defaultApp);
+                            return $this->express($defaultApp);
                         }
 
                         if ($name) {
@@ -649,7 +649,7 @@ class MultiAddons
                 $appPath = $this->path ?: ADDON_PATH.$this->addonsName . DIRECTORY_SEPARATOR.'app'. DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR;;
 
                 if (!is_dir($appPath)) {
-                    $this->express($defaultApp);
+                    return $this->express($defaultApp);
                 }
             }
 
@@ -792,7 +792,7 @@ class MultiAddons
      * @param string $defaultApp 默认app名称
      * @return boolean
      */
-    protected function express($defaultApp): string
+    protected function express($defaultApp): bool
     {
         $express = $this->app->config->get('app.app_express', false);
         if ($express) {
