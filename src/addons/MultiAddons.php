@@ -65,14 +65,14 @@ class MultiAddons
      * 相对路径：/addons/demo/addons/dev/app/admin/controller/sample.php
      * @var array
     protected $data=[
-        'appName'=>'',
-        'addonsName'=>'',
-        'modulesName'=>''
+    'appName'=>'',
+    'addonsName'=>'',
+    'modulesName'=>''
     ];
     $this->app->request->appName=$appName;
     $this->app->request->addonsName=$addonsName;
     $this->app->request->modulesName=$modulesName;
-    */
+     */
 
     public function __construct(App $app)
     {
@@ -284,13 +284,7 @@ class MultiAddons
                             $appPath = $this->path ?: ADDON_PATH.$this->addonsName . DIRECTORY_SEPARATOR.'app'. DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR;;
 
                             if (!is_dir($appPath)) {
-                                $express = $this->app->config->get('app.app_express', false);
-                                if ($express) {
-                                    $this->setApp($defaultApp);
-                                    return true;
-                                } else {
-                                    return false;
-                                }
+                                $this->express($defaultApp);
                             }
                         }
                         if ($name) {
@@ -332,13 +326,7 @@ class MultiAddons
                     //$appPath = $this->path ?: ADDON_PATH.$this->addonsName . DIRECTORY_SEPARATOR.'app'. DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR;;
 
                     if (!is_dir($appPath)) {
-                        $express = $this->app->config->get('app.app_express', false);
-                        if ($express) {
-                            $this->setApp($defaultApp);
-                            return true;
-                        } else {
-                            return false;
-                        }
+                        $this->express($defaultApp);
                     }
                 }
                 if ($name) {
@@ -388,13 +376,7 @@ class MultiAddons
                                 $appPath = $this->path ?: ADDON_PATH.$this->addonsName . DIRECTORY_SEPARATOR.'app'. DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR;;
 
                                 if (!is_dir($appPath)) {
-                                    $express = $this->app->config->get('app.app_express', false);
-                                    if ($express) {
-                                        $this->setApp($defaultApp);
-                                        return true;
-                                    } else {
-                                        return false;
-                                    }
+                                    $this->express($defaultApp);
                                 }
                             }
                             if ($name) {
@@ -439,20 +421,7 @@ class MultiAddons
                     //$appPath = $this->path ?: ADDON_PATH.$this->addonsName . DIRECTORY_SEPARATOR.'app'. DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR;;
 
                     if (!is_dir($appPath)) {
-                        $express = $this->app->config->get('app.app_express', false);
-                        if ($express) {
-                            //开启插件快速访问
-                            if (config('site.default_app')){
-                                $default_app=explode('/',config('site.default_app'));
-                                $this->setAddons($default_app[0],$default_app[1]);
-                            }else{
-                                //tp6快速访问
-                                $this->setApp($defaultApp);
-                            }
-                            return true;
-                        } else {
-                            return false;
-                        }
+                        $this->express($defaultApp);
                     }
                 }
                 if ($name) {
@@ -640,13 +609,7 @@ class MultiAddons
                         $appPath = $this->path ?: ADDON_PATH.$this->addonsName . DIRECTORY_SEPARATOR.'app'. DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR;;
 
                         if (!is_dir($appPath)) {
-                            $express = $this->app->config->get('app.app_express', false);
-                            if ($express) {
-                                $this->setApp($defaultApp);
-                                return true;
-                            } else {
-                                return false;
-                            }
+                            $this->express($defaultApp);
                         }
 
                         if ($name) {
@@ -686,13 +649,7 @@ class MultiAddons
                 $appPath = $this->path ?: ADDON_PATH.$this->addonsName . DIRECTORY_SEPARATOR.'app'. DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR;;
 
                 if (!is_dir($appPath)) {
-                    $express = $this->app->config->get('app.app_express', false);
-                    if ($express) {
-                        $this->setApp($defaultApp);
-                        return true;
-                    } else {
-                        return false;
-                    }
+                    $this->express($defaultApp);
                 }
             }
 
@@ -704,7 +661,7 @@ class MultiAddons
         $this->setApp($appName ?: $defaultApp);
         return true;
     }
-    
+
     /**
      * 设置应用
      * @param string $appName
@@ -765,7 +722,7 @@ class MultiAddons
             $this->loadApp($appName, $appPath);
         }
     }
-    
+
     /**
      * 加载应用文件
      * @param string $appName 应用名
@@ -827,5 +784,29 @@ class MultiAddons
     protected function getRoutePath(): string
     {
         return $this->app->getAppPath() . 'route' . DIRECTORY_SEPARATOR;
+    }
+
+    /**
+     * 异常跳转
+     * @access protected
+     * @param string $defaultApp 默认app名称
+     * @return boolean
+     */
+    protected function express($defaultApp): string
+    {
+        $express = $this->app->config->get('app.app_express', false);
+        if ($express) {
+            //开启插件快速访问
+            if (config('site.default_app')){
+                $default_app=explode('/',config('site.default_app'));
+                $this->setAddons($default_app[0],$default_app[1]);
+            }else{
+                //tp6快速访问
+                $this->setApp($defaultApp);
+            }
+            return true;
+        } else {
+            return false;
+        }
     }
 }
