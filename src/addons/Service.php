@@ -50,6 +50,7 @@ class Service extends \think\Service
      */
     public function register()
     {
+        error_reporting(0);
         // 插件目录
         define('ADDON_PATH', root_path() . 'addons' . DIRECTORY_SEPARATOR);
         // 无则创建addons目录

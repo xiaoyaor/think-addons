@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+use Symfony\Component\VarExporter\VarExporter;
 use think\Exception;
 use think\facade\Config;
 use think\facade\Event;
@@ -563,7 +564,7 @@ if (!function_exists('set_addon_fullconfig')) {
             throw new Exception("文件没有写入权限");
         }
         if ($handle = fopen($file, 'w')) {
-            fwrite($handle, "<?php\n\n" . "return " . var_export($array, TRUE) . ";\n");
+            fwrite($handle, "<?php\n\n" . "return " . VarExporter::export($array) . ";\n");
             fclose($handle);
         } else {
             throw new Exception("文件没有写入权限");
