@@ -72,8 +72,8 @@ if (!function_exists('hook')) {
      */
     function hook($event, $params = null, bool $once = false)
     {
-        //下划线转驼峰(首字母小写)
-        $event = Str::camel($event);
+        //下划线转驼峰(首字母大写)
+        $event = Str::studly($event);
 
         $result = Event::trigger($event, $params, $once);
 
