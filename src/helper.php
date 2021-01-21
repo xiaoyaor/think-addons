@@ -663,8 +663,9 @@ function addon_url($url, $vars = [], $suffix = true, $domain = false)
             unset($vars[$k]);
         }
     }
-    $val = "@FgdHYtrgFds/{$url}";
-    $dd=url();
+    //$val = "@addons/{$url}";
+    //$dd=url();
+    $val = "{$url}";
     $config = get_addon_config($addon);
     $domainprefix = $config && isset($config['domain']) && $config['domain'] ? $config['domain'] : '';
     $domain = $domainprefix && Config::get('url_domain_deploy') ? $domainprefix : $domain;
