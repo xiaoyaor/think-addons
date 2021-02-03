@@ -63,10 +63,10 @@ class Service extends \think\Service
         $this->autoload();
         // 2.注册插件事件hook
         $this->loadEvent();
-        // 3.加载插件系统服务
-        $this->loadService();
-        // 4.绑定插件容器
+        // 3.绑定插件容器
         $this->app->bind('addons', Service::class);
+        // 4.自动加载全局的插件内部第三方类库
+        addon_vendor_autoload($this->data_list);
     }
 
     /*
@@ -85,69 +85,6 @@ class Service extends \think\Service
         $this->app->bind([
             'think\route\Url' => Url::class,
         ]);
-    }
-
-    /**
-     * 插件事件
-     */
-    private function loadEvent()
-    {
-        $hooks = $this->app->isDebug() ? [] : Cache::get('hooks', []);
-        if (empty($hooks)) {
-            $hooks = (array) Config::get('addons.hooks', []);
-            // 初始化钩子
-            foreach ($hooks as $key => $values) {
-                if (is_string($values)) {
-                    $values = explode(',', $values);
-                } else {
-                    $values = (array) $values;
-                }
-                $hooks[$key] = array_filter(array_map(function ($v) use ($key) {
-                    return [get_addons_class($v), Str::camel($key)];
-                }, $values));
-            }
-            Cache::set('hooks', $hooks);
-        }
-        //如果在插件中有定义 AddonsInit，则直接执行
-        if (isset($hooks['AddonsInit'])) {
-            foreach ($hooks['AddonsInit'] as $k => $v) {
-                Event::trigger('AddonsInit', $v);
-            }
-        }
-        Event::listenEvents($hooks);
-    }
-
-    /**
-     * 挂载插件服务
-     */
-    private function loadService()
-    {
-        $results = scandir($this->addons_path);
-        $bind = [];
-        foreach ($results as $name) {
-            if ($name === '.' or $name === '..') {
-                continue;
-            }
-            if (is_file($this->addons_path . $name)) {
-                continue;
-            }
-            $addonDir = $this->addons_path . $name . DIRECTORY_SEPARATOR;
-            if (!is_dir($addonDir)) {
-                continue;
-            }
-
-            if (!is_file($addonDir . ucfirst($name) . '.php')) {
-                continue;
-            }
-
-            $service_file = $addonDir . 'service.ini';
-            if (!is_file($service_file)) {
-                continue;
-            }
-            $info = parse_ini_file($service_file, true, INI_SCANNER_TYPED) ?: [];
-            $bind = array_merge($bind, $info);
-        }
-        $this->app->bind($bind);
     }
 
     /**
@@ -254,7 +191,37 @@ class Service extends \think\Service
         //插件配置信息保存到Config
         Config::set($config, 'addons');
     }
-    
+
+    /**
+     * 插件事件
+     */
+    private function loadEvent()
+    {
+        $hooks = $this->app->isDebug() ? [] : Cache::get('hooks', []);
+        if (empty($hooks)) {
+            $hooks = (array) Config::get('addons.hooks', []);
+            // 初始化钩子
+            foreach ($hooks as $key => $values) {
+                if (is_string($values)) {
+                    $values = explode(',', $values);
+                } else {
+                    $values = (array) $values;
+                }
+                $hooks[$key] = array_filter(array_map(function ($v) use ($key) {
+                    return [get_addons_class($v), Str::camel($key)];
+                }, $values));
+            }
+            Cache::set('hooks', $hooks);
+        }
+        //如果在插件中有定义 AddonsInit，则直接执行
+        if (isset($hooks['AddonsInit'])) {
+            foreach ($hooks['AddonsInit'] as $k => $v) {
+                Event::trigger('AddonsInit', $v);
+            }
+        }
+        Event::listenEvents($hooks);
+    }
+
     /**
      * 获取 addons 路径
      * @return string

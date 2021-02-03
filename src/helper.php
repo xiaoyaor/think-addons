@@ -785,3 +785,33 @@ if (!function_exists('array_sequence')) {
         return $array;
     }
 }
+
+if (!function_exists('addon_vendor_autoload')) {
+    /**
+     * 加载插件内部第三方类库
+     * @params mixed $addonsName 插件名称或插件数组
+     */
+    function addon_vendor_autoload($addonsName) {
+        //插件全局类库
+        if (is_array($addonsName)){
+            foreach ($addonsName as $item) {
+                if (isset($item['autoload']) && $item['autoload']){
+                    $autoload_file = root_path() . '/addons/' . $item['name'] . '/vendor/autoload.php';
+                    if (file_exists($autoload_file)){
+                        require_once $autoload_file;
+                    }
+                }
+            }
+        }else{
+            //插件私有类库
+            $Config = get_addon_info($addonsName);
+            if (isset($Config['autoload']) && !$Config['autoload']){
+                $autoload_file = root_path() . '/addons/' . $addonsName . '/vendor/autoload.php';
+                if (file_exists($autoload_file)){
+                    require_once $autoload_file;
+                }
+            }
+        }
+        return true;
+    }
+}

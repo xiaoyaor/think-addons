@@ -721,6 +721,9 @@ class MultiAddons
             //加载插件应用app下模块下的文件
             $this->loadApp($appName, $appPath);
         }
+
+        //加载插件内部第三方类库
+        addon_vendor_autoload($addonsName);
     }
 
     /**
