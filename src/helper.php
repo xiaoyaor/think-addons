@@ -6,6 +6,7 @@ use think\Exception;
 use think\facade\Config;
 use think\facade\Event;
 use think\facade\Route;
+use think\facade\Cache;
 use think\helper\{
     Str, Arr
 };
@@ -97,6 +98,26 @@ if (!function_exists('trigger')) {
         $result = Event::trigger($event, $params, $once);
 
         return join('', $result);
+    }
+}
+
+if (!function_exists('check_addon_install')) {
+    /**
+     * 是否安装了插件
+     * @param mixed $addons  插件:字符串/逗号分割/数组
+     * @return boolean
+     */
+    function check_addon_install($addons)
+    {
+        $return = false;
+        $list = Cache::get('addons_data', []);
+        if (is_array($addons)){
+            $return = $addons == array_intersect($addons, $list)?true:false;
+        }else{
+            $addonslist = explode(',',rtrim($addons,','));
+            $return = $addonslist == array_intersect($addonslist, $list)?true:false;
+        }
+        return $return;
     }
 }
 
@@ -293,49 +314,6 @@ if (!function_exists('get_addon_list')) {
     }
 
 }
-
-if (!function_exists('get_app_list')) {
-
-    /**
-     * 获得应用列表
-     * @param bool $isrun 是否只开启的
-     * @return array
-     */
-    function get_app_list($isrun=false)
-    {
-        $results = scandir(ADDON_PATH);
-        $list = [];
-        foreach ($results as $name) {
-            if ($name === '.' or $name === '..')
-                continue;
-            if (is_file(ADDON_PATH . $name))
-                continue;
-            $addonDir = ADDON_PATH . $name . DIRECTORY_SEPARATOR;
-            if (!is_dir($addonDir))
-                continue;
-
-            if (!is_file($addonDir . str::studly($name) . '.php'))
-                continue;
-
-            //这里不采用get_addon_info是因为会有缓存
-            //$info = get_addon_info($name);
-            if (addons_type($addonDir,false)=='app'){
-                $info_file=addons_type($addonDir);
-            }else{
-                continue;
-            }
-
-            $info = Config::load($info_file);
-            if ($isrun&&$info['state']!=1)
-                continue;
-            $info['url'] = addons_url($name);
-            $list[$name] = $info;
-        }
-        return $list;
-    }
-
-}
-
 
 if (!function_exists('get_addon_config')) {
 
