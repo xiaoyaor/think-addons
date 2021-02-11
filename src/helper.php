@@ -101,13 +101,13 @@ if (!function_exists('trigger')) {
     }
 }
 
-if (!function_exists('check_addon_install')) {
+if (!function_exists('addon_exist')) {
     /**
      * 是否安装了插件
      * @param mixed $addons  插件:字符串/逗号分割/数组
      * @return boolean
      */
-    function check_addon_install($addons)
+    function addon_exist($addons)
     {
         $return = false;
         $list = Cache::get('addons_data', []);
