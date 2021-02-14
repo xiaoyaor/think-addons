@@ -373,6 +373,7 @@ class MultiAddons
                             }
                             if ($name) {
                                 $this->app->request->setRoot('/' . $name);
+                                $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
                                 $path=$this->app->request->pathinfo();
                                 $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
                                 //$path=$this->app->request->pathinfo();
