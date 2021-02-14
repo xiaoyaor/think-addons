@@ -147,8 +147,8 @@ class MultiAddons
                         if ($key==$subDomain){
                             $list = explode('/', $value);
                             $this->addonsName=$list[1];
+                            $this->addonsName=$this->realAddonsName($this->addonsName);
                             $config=ADDON_PATH.$this->addonsName.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'app.php';
-                            $this->app->request->addonsName=$this->addonsName;
                             $con=$this->app->config->load($config,'app_'.$this->addonsName);
                             return $this->parseMultiAddons($this->addonsName);//【应用模块绑定映射】
                         }
@@ -179,8 +179,8 @@ class MultiAddons
                     if ($homepage&&!$path) {
                         $list = explode('/', $homepage);
                         $this->addonsName=$list[1];
+                        $this->addonsName=$this->realAddonsName($this->addonsName);
                         $config=ADDON_PATH.$this->addonsName.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'app.php';
-                        $this->app->request->addonsName=$this->addonsName;
                         $con=$this->app->config->load($config,'app_'.$this->addonsName);
                         return $this->parseMultiAddons($this->addonsName);//【应用模块绑定映射】
                     }
@@ -191,8 +191,8 @@ class MultiAddons
                             if ($key==$name){
                                 $list = explode('/', $value);
                                 $this->addonsName=$list[1];
+                                $this->addonsName=$this->realAddonsName($this->addonsName);
                                 $config=ADDON_PATH.$this->addonsName.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'app.php';
-                                $this->app->request->addonsName=$this->addonsName;
                                 $con=$this->app->config->load($config,'app_'.$this->addonsName);
                                 return $this->parseMultiAddons($this->addonsName);//【应用模块绑定映射】
                             }
@@ -226,7 +226,6 @@ class MultiAddons
             // 自动多应用识别
             $this->app->http->setBind(false);
             $appName       = null;
-            $this->appName = '';
 
             $bind = $this->app->config->get('app.domain_bind', []);
 
@@ -257,6 +256,7 @@ class MultiAddons
                 $name = current($list);
                 $module = key_exists(0,$list)?$list[0]:'index';
                 $this->addonsName=$module;
+                $this->addonsName = $module =$this->realAddonsName($this->addonsName);
 
                 //##首先匹配系统插件下常规URL
                 foreach ($data_list as $key=>$value){
@@ -320,21 +320,13 @@ class MultiAddons
                 } elseif ($name && isset($map['*'])) {
                     $appName = $map['*'];
                 } else {
-
-                    //$appName = $name ?: $defaultApp;
                     $appPath = $this->path ?: $this->app->getBasePath() . $appName . DIRECTORY_SEPARATOR;
-                    //$appPath = $this->path ?: ADDON_PATH.$this->addonsName . DIRECTORY_SEPARATOR.'app'. DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR;;
-
                     if (!is_dir($appPath)) {
                         return $this->express($defaultApp);
                     }
                 }
                 if ($name) {
                     $this->app->request->setRoot('' );
-                    //$this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
-                    //$path=$this->app->request->pathinfo();
-                    //$this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
-                    //$path=$this->app->request->pathinfo();
                 }
                 $this->setApp($appName ?: $defaultApp,$this->addonsName);
                 return true;
@@ -347,7 +339,8 @@ class MultiAddons
                 $name = current($list);
                 $module = key_exists(1,$list)?$list[1]:'index';
                 $module = remove_ext($module);
-                $this->addonsName=$module;
+                $this->addonsName = $module;
+                $this->addonsName = $module = $this->realAddonsName($this->addonsName);
                 if (strpos($name, '.')) {
                     $name = strstr($name, '.', true);
                 }
@@ -372,7 +365,6 @@ class MultiAddons
                             } else {
 
                                 $appName = $name ?: $defaultApp;
-                                //$appPath = $this->path ?: $this->app->getBasePath() . $appName . DIRECTORY_SEPARATOR;
                                 $appPath = $this->path ?: ADDON_PATH.$this->addonsName . DIRECTORY_SEPARATOR.'app'. DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR;;
 
                                 if (!is_dir($appPath)) {
@@ -381,7 +373,6 @@ class MultiAddons
                             }
                             if ($name) {
                                 $this->app->request->setRoot('/' . $name);
-                                $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
                                 $path=$this->app->request->pathinfo();
                                 $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
                                 //$path=$this->app->request->pathinfo();
@@ -394,15 +385,6 @@ class MultiAddons
 
 
                 //##其次匹配系统app下常规URL
-//                $path = $this->app->request->pathinfo();
-//                $map  = $this->app->config->get('app.app_map', []);
-//                $deny = $this->app->config->get('app.deny_app_list', []);
-//                $name = current(explode('/', $path));
-//
-//                if (strpos($name, '.')) {
-//                    $name = strstr($name, '.', true);
-//                }
-
                 if (isset($map[$name])) {
                     if ($map[$name] instanceof Closure) {
                         $result  = call_user_func_array($map[$name], [$this->app]);
@@ -418,19 +400,13 @@ class MultiAddons
 
                     $appName = $name ?: $defaultApp;
                     $appPath = $this->path ?: $this->app->getBasePath() . $appName . DIRECTORY_SEPARATOR;
-                    //$appPath = $this->path ?: ADDON_PATH.$this->addonsName . DIRECTORY_SEPARATOR.'app'. DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR;;
-
                     if (!is_dir($appPath)) {
                         return $this->express($defaultApp);
                     }
                 }
                 if ($name) {
                     $this->app->request->setRoot('/' . $name);
-                    //$dd=$this->app->request->pathinfo();
                     $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
-                    //$path=$this->app->request->pathinfo();
-                    //$this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
-                    //$path=$this->app->request->pathinfo();
                 }
                 $this->setApp($appName ?: $defaultApp);
                 return true;
@@ -468,8 +444,8 @@ class MultiAddons
                 if ($key==$subDomain){
                     $list = explode('/', $value);
                     $this->addonsName=$list[1];
+                    $this->addonsName=$this->realAddonsName($this->addonsName);
                     $config=ADDON_PATH.$this->addonsName.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'app.php';
-                    $this->app->request->addonsName=$this->addonsName;
                     $con=$this->app->config->load($config,'app_'.$this->addonsName);
 
 
@@ -477,8 +453,6 @@ class MultiAddons
                         $appName = $list[0] ?: $defaultApp;
                         if ($name) {
                             $this->app->request->setRoot('');
-                            //$this->app->request->setRoot('/' . $name);
-                            //$this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
                         }
                     }
                     $this->setAddons($appName ?: $defaultApp,$addonsName);
@@ -493,8 +467,8 @@ class MultiAddons
                 if ($key==$name){
                     $list = explode('/', $value);
                     $this->addonsName=$list[1];
+                    $this->addonsName=$this->realAddonsName($this->addonsName);
                     $config=ADDON_PATH.$this->addonsName.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'app.php';
-                    $this->app->request->addonsName=$this->addonsName;
                     $con=$this->app->config->load($config,'app_'.$this->addonsName);
 
 
@@ -516,8 +490,8 @@ class MultiAddons
         if ($homepage&&!$path) {
             $list = explode('/', $homepage);
             $this->addonsName=$list[1];
+            $this->addonsName=$this->realAddonsName($this->addonsName);
             $config=ADDON_PATH.$this->addonsName.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'app.php';
-            $this->app->request->addonsName=$this->addonsName;
             $con=$this->app->config->load($config,'app_'.$this->addonsName);
 
 
@@ -535,7 +509,6 @@ class MultiAddons
         // 自动多应用识别
         $this->app->http->setBind(false);
         $appName       = null;
-        $this->appName = '';
 
         $bind = $this->app->config->get('app.domain_bind', []);
 
@@ -566,15 +539,12 @@ class MultiAddons
                 if ($module==$value['name']&&$value['type']=='addon'){
                     $config=ADDON_PATH.$value['name'].DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'app.php';
                     $this->addonsName=$value['name'];
-                    $this->app->request->addonsName=$this->addonsName;
-                    //$route->rule($value['web']."/:module/[:controller]/[:action]", $execute)->append(['appinfo'=>$value])
-                    //   ->middleware(Frontend::class);
+                    $this->addonsName=$this->realAddonsName($this->addonsName);
                     $con=$this->app->config->load($config,'app_'.$value['name']);
                     $defaultApp = $con['default_app'] ?: 'index';
                     // 自动多应用识别
                     $this->app->http->setBind(false);
                     $appName       = null;
-                    $this->appName = '';
 
                     $bind = $con['domain_bind'];
 
@@ -703,7 +673,6 @@ class MultiAddons
 
         $this->app->setAppPath($appPath);
 
-        //$app_namespace=$this->app->config->get('app_'.$this->addonsName.'.app_namespace');
         $app_namespace='addons\\'.$addonsName.'\\';
 
 
@@ -812,4 +781,25 @@ class MultiAddons
             return false;
         }
     }
+
+    /**
+     * 如果有插件映射获取插件名称
+     * @access protected
+     * @param string $addonsname 插件名称
+     * @return string
+     */
+    protected function realAddonsName($addonsname): string
+    {
+        //插件映射名称
+        $map_info=Cache::get('map_info',[]);
+        if ($map_info){
+            foreach ($map_info as $key => $item) {
+                if ($addonsname == $item){
+                    return $key;
+                }
+            }
+        }
+        return $addonsname;
+    }
+
 }

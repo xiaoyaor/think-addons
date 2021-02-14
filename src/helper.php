@@ -450,11 +450,15 @@ if (!function_exists('get_addon_config_value')) {
     function get_addon_config_value($list,$name)
     {
         $arr=[];
-        foreach ($list as $item) {
+        foreach ($list as $key => $item) {
             foreach ($item as $item2) {
                 if ($item2['name'] == $name) {
-                    if ($item2['value']&&$item2['value']!='[]') {
-                        $arr[]=$item2['value'];
+                    if ($item2['value']) {
+                        if (is_array($item2['value'])){
+                            $arr[]=$item2['value'];
+                        }else{
+                            $arr[$key] = $item2['value'];
+                        }
                     }
                 }
             }

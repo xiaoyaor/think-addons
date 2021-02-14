@@ -187,6 +187,8 @@ class Service extends \think\Service
             Cache::set('domain_list', get_addon_config_value($this->config_data_list, 'domain'));
             //插件规则路由列表
             Cache::set('rule_list', get_addon_config_value($this->config_data_list, 'rule'));
+            //插件映射名称
+            Cache::set('map_info', get_addon_config_value($this->config_data_list, 'map'));
         }
         //插件配置信息保存到Config
         Config::set($config, 'addons');
