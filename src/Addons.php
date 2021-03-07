@@ -164,7 +164,6 @@ class Addons
         $info_file = addons_type($this->addon_path);
         if (is_file($info_file)) {
             $_info = parse_ini_file($info_file, true, INI_SCANNER_TYPED) ?: [];
-            $_info['url'] = addons_url();
             $info = array_merge($_info, $info);
         }
         Config::set($info, $this->addon_info);
