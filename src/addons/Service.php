@@ -66,7 +66,7 @@ class Service extends \think\Service
         // 3.绑定插件容器
         $this->app->bind('addons', Service::class);
         // 4.自动加载全局的插件内部第三方类库
-        addon_vendor_autoload($this->data_list);
+        addon_vendor_autoload($this->data_list?$this->data_list:Cache::get('addons_list_data',[]));
     }
 
     /*
