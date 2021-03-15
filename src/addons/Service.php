@@ -106,7 +106,7 @@ class Service extends \think\Service
                 // 找到插件入口文件
                 if (strtolower($info['filename']) === strtolower($name)) {
                     //插件关闭后不加载事件
-                    $ini_file = addons_type($info['dirname'] . DIRECTORY_SEPARATOR);
+                    $ini_file = addon_ini($info['dirname'] . DIRECTORY_SEPARATOR);
                     if (!is_file($ini_file)) {
                         continue;
                     }
@@ -131,7 +131,7 @@ class Service extends \think\Service
                 // 找到插件入口文件
                 if (strtolower($info['filename']) === strtolower($name)) {
                     //插件关闭后不加载事件
-                    $ini_file = addons_type($info['dirname'] . DIRECTORY_SEPARATOR);
+                    $ini_file = addon_ini($info['dirname'] . DIRECTORY_SEPARATOR);
                     if (!is_file($ini_file)) {
                         continue;
                     }
@@ -139,14 +139,12 @@ class Service extends \think\Service
                     if (!$iniinfo['state']) {
                         continue;
                     }
+
                     //读取开启的应用列表
-                    $path_type = addons_type($info['dirname'] . DIRECTORY_SEPARATOR, false);
-                    if (in_array($path_type, ['addon'])) {
-                        $iniinfo['type'] = $path_type;
-                        $this->data[] = $iniinfo['name'];
-                        $this->data_list[$iniinfo['name']] = $iniinfo;
-                        $this->config_data_list[$iniinfo['name']] = include addons_config($info['dirname'] . DIRECTORY_SEPARATOR);
-                    }
+                    $this->data[] = $iniinfo['name'];
+                    $this->data_list[$iniinfo['name']] = $iniinfo;
+                    $this->config_data_list[$iniinfo['name']] = include addons_config($info['dirname'] . DIRECTORY_SEPARATOR);
+
                     // 读取出所有公共方法
                     //                if (strpos($iniinfo['name'],'_')!==false){
                     //                    $methods = (array)get_class_methods("\\addons\\" . $iniinfo['name'] . "\\" . $info['filename']);
@@ -189,6 +187,10 @@ class Service extends \think\Service
             Cache::set('rule_list', get_addon_config_value($this->config_data_list, 'rule'));
             //插件映射名称
             Cache::set('map_info', get_addon_config_value($this->config_data_list, 'map'));
+            //全局插件模块列表
+            Cache::set('global_list', get_addon_config_value($this->config_data_list, 'global'));
+            //附加插件模块列表
+            Cache::set('attach_list', get_addon_config_value($this->config_data_list, 'attach'));
         }
         //插件配置信息保存到Config
         Config::set($config, 'addons');

@@ -161,7 +161,7 @@ class Addons
         // 文件属性
         $info = $this->info ?? [];
         // 文件配置
-        $info_file = addons_type($this->addon_path);
+        $info_file = addon_ini($this->addon_path);
         if (is_file($info_file)) {
             $_info = parse_ini_file($info_file, true, INI_SCANNER_TYPED) ?: [];
             $info = array_merge($_info, $info);

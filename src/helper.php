@@ -154,7 +154,7 @@ if (!function_exists('getInfo')) {
         // 文件属性
         $info = [];
         // 文件配置
-        $info_file = addons_type(ADDON_PATH.$name.DIRECTORY_SEPARATOR);
+        $info_file = addon_ini($name);
         if (is_file($info_file)) {
             $_info = parse_ini_file($info_file, true, INI_SCANNER_TYPED) ?: [];
             $_info['url'] = addons_url();
@@ -297,15 +297,7 @@ if (!function_exists('get_addon_list')) {
             if (!is_file($addonDir . str::studly($name) . '.php'))
                 continue;
 
-            //这里不采用get_addon_info是因为会有缓存
-            //$info = get_addon_info($name);
-            if (addons_type($addonDir,false)=='addon'){
-                $info_file=addons_type($addonDir);
-            }else{
-                continue;
-            }
-
-
+            $info_file=addon_ini($addonDir);
             $info = Config::load($info_file, '', "addon-info-{$name}");
             $info['url'] = addons_url($name);
             $list[$name] = $info;
@@ -329,6 +321,31 @@ if (!function_exists('get_addon_config')) {
             return [];
         }
         return $addon->getConfig($name);
+    }
+
+}
+if (!function_exists('get_addon_config_single')) {
+
+    /**
+     * 获取插件类的配置值值
+     * @param string $name 插件名
+     * @param string $param 键名
+     * @param boolean $isarray 是否数组
+     * @return array
+     */
+    function get_addon_config_single($name,$param,$isarray=false)
+    {
+        //插件信息列表
+        $config_data_single_list=Cache::get('config_data_single_list',[]);
+        if (isset($config_data_single_list[$name]) && isset($config_data_single_list[$name][$param])){
+            return $config_data_single_list[$name][$param];
+        }else{
+            if ($isarray){
+                return [];
+            }else{
+                return '';
+            }
+        }
     }
 
 }
@@ -477,7 +494,7 @@ if (!function_exists('set_addon_info')) {
      */
     function set_addon_info($name, $array)
     {
-        $file = addons_type(ADDON_PATH . $name . DIRECTORY_SEPARATOR);
+        $file = addon_ini($name);
         $addon = get_addon_instance($name);
         $array = $addon->setInfo($name, $array);
         $res = array();
@@ -680,27 +697,19 @@ function addon_url($url, $vars = [], $suffix = true, $domain = false)
     return $url;
 }
 
-if (!function_exists('addons_type')) {
+if (!function_exists('addon_ini')) {
     /**
-     * 判断插件是addon还是app
-     * @param string $path 插件路径
-     * @param boolean $type 返回类型：true:返回ini文件完整路径 false:返回插件类型
+     * 插件信息路径
+     * @param string $name 插件名称或路径
      * @return mixed
      */
-    function addons_type($path,$type=true)
+    function addon_ini($name)
     {
-        if ($type) {
-            if (is_file($path . 'addon.ini')) {
-                return $path . 'addon.ini';
-            } else{
-                return $path;
-            }
-        } else {
-            if (is_file($path . 'addon.ini')) {
-                return 'addon';
-            } else {
-                return '';
-            }
+        $file = ADDON_PATH . $name . DIRECTORY_SEPARATOR . 'addon.ini';
+        if (is_file($file)){
+            return $file;
+        }else{
+            return $name . 'addon.ini'; 
         }
     }
 }
