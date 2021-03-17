@@ -366,14 +366,10 @@ class MultiAddons
                                 }
                             }
                             if ($name) {
-                                $this->app->request->setRoot('/' . $name);
                                 if ($this->addon_map){
-                                    $this->app->request->setRoot('/' . $mapname);
-                                    $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+                                    $this->set_website('/' . $name,$path,1);
                                 }else{
-                                    $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
-                                    $path = $this->app->request->pathinfo();
-                                    $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+                                    $this->set_website('/' . $name,$path,2);
                                 }
                             }
                             $this->setAddons($appName ?: $defaultApp, $this->addonsName);
@@ -439,10 +435,7 @@ class MultiAddons
                                 }
                             }
                             if ($name) {
-                                $this->app->request->setRoot('/' . $name);
-                                $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
-                                $path=$this->app->request->pathinfo();
-                                $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+                                $this->set_website('/' . $name,$path,2);
                             }
                         }
                         $this->setAddons($appName ?: $defaultApp,$this->addonsName);
@@ -471,8 +464,7 @@ class MultiAddons
                     }
                 }
                 if ($name) {
-                    $this->app->request->setRoot('/' . $name);
-                    $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+                    $this->set_website('/' . $name,$path,1);
                 }
                 $this->setApp($appName ?: $defaultApp);
                 return true;
@@ -510,17 +502,15 @@ class MultiAddons
             foreach ($domain_list as $k=>$val){
                 foreach ($val as $key=>$value){
                     if ($key==$subDomain){
-
                         //获取模块名称
-                        $appName = $this->get_appname($subDomain);
+                        $appName = $this->get_appname($subDomain,explode('/',$value)[0]);
 
                         $config=ADDON_PATH.$this->addonsName.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'app.php';
                         $con=$this->app->config->load($config,'app_'.$this->addonsName);
 
                         //附加
                         if ($this->isattach){
-                            $this->app->request->setRoot('/' . $name);
-                            $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+                            $this->set_website('/' . $name,$path,1);
                         }else{
                             $this->app->request->setRoot('/' . $appName);
                             //排除
@@ -531,23 +521,15 @@ class MultiAddons
                                  * Pathinfo为去掉模块[$appName]和插件名称[$addonsName]，剩下的控制器[controller]和装饰器[action]
                                  */
                                 if ($this->isrule){
-                                    $this->app->request->setRoot('/' . $addonsName.'/'. $appName);
-                                    $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+                                    $this->set_website('/' . $addonsName.'/'. $appName ,$path,1);
                                 }else{
-                                    $this->app->request->setRoot('/' . $addonsName.'/'. $appName);
-                                    $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
-                                    $path = $this->app->request->pathinfo();
-                                    $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+                                    $this->set_website('/' . $addonsName.'/'. $appName,$path,2);
                                 }
                             }else{
                                 if ($this->isrule){
-                                    $this->app->request->setRoot('/' . $addonsName.'/'. $appName);
-                                    $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+                                    $this->set_website('/' .  $addonsName.'/'. $appName,$path,1);
                                 }else{
-                                    $this->app->request->setRoot('/' . $addonsName.'/'. $appName);
-                                    //$this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
-                                    //$path = $this->app->request->pathinfo();
-                                    //$this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+                                    $this->set_website('/' . $addonsName.'/'. $appName,$path,0);
                                 }
                             }
                         }
@@ -573,8 +555,7 @@ class MultiAddons
 
                         $appName = $list[0] ?: $defaultApp;
                         if ($name) {
-                            $this->app->request->setRoot('/' . $name);
-                            $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+                            $this->set_website('/' . $name,$path,1);
                         }
                         $this->setAddons($appName ?: $defaultApp,$addonsName);
                         return true;
@@ -597,8 +578,7 @@ class MultiAddons
                 if ($homepage&&!$path){
                     $appName = $list[0] ?: $defaultApp;
                     if ($name) {
-                        $this->app->request->setRoot('/' . $name);
-                        $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+                        $this->set_website('/' . $name,$path,1);
                     }
                 }
                 $this->setAddons($appName ?: $defaultApp,$addonsName);
@@ -871,8 +851,9 @@ class MultiAddons
     /**
      * 获取模块名称
      * @param string $value 取值
+     * @param string $appName 取值
      */
-    protected function get_appname($value)
+    protected function get_appname($value,$appName)
     {
         //附加插件模块
         $attach_list=Cache::get('attach_list',[]);
@@ -893,10 +874,24 @@ class MultiAddons
                 $appName = $this->firsturi;
                 $this->app->http->setBind(true);
             }else{
-                $appName = $value ?: $defaultApp;
+                $appName = $appName ?: $defaultApp;
             }
         }
         return $appName;
     }
 
+    /**
+     * 设置网站的根目录和pathinfo
+     * @param string $root 根目录
+     * @param string $path athinfo
+     * @param integer $num 去除几个‘/’
+     */
+    protected function set_website($root,$path,$num=0)
+    {
+        $this->app->request->setRoot($root);
+        for ($x=0;$x<$num;$x++){
+            $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+            $path=$this->app->request->pathinfo();
+        }
+    }
 }
