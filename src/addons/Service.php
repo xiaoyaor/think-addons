@@ -44,7 +44,7 @@ class Service extends \think\Service
     protected static $conflict_dir='cache/conflict/';
     //网站数据库文件存放文件夹
     protected static $mysql_dir='mysql';
-    
+
     /**
      * 注册服务
      */
@@ -186,7 +186,7 @@ class Service extends \think\Service
             //插件规则路由列表
             Cache::set('rule_list', get_addon_config_value($this->config_data_list, 'rule'));
             //插件映射名称
-            Cache::set('map_info', get_addon_config_value($this->config_data_list, 'map'));
+            Cache::set('map_info', get_addon_config_value($this->config_data_list, 'addon_map'));
             //全局插件模块列表
             Cache::set('global_list', get_addon_config_value($this->config_data_list, 'global'));
             //附加插件模块列表

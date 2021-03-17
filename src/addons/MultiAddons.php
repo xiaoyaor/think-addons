@@ -61,10 +61,16 @@ class MultiAddons
     protected $uri;
 
     /**
-     * 域名配置
+     * 应用映射
      * @var string
      */
     protected $map;
+
+    /**
+     * 插件映射
+     * @var boolean
+     */
+    protected $addon_map = false;
 
     /**
      * 禁止访问
@@ -115,7 +121,7 @@ class MultiAddons
      * 当前插件模块是否为全局模块
      * 全局模块不受子域名绑定限制
      * 第2个斜杠分割网址路径参数
-     * @var string
+     * @var boolean
      */
     protected $global = false;
 
@@ -153,7 +159,7 @@ class MultiAddons
         $this->firsturi  = current($temp)?:'index';
         $this->seconduri = isset($temp[1])?$temp[1]:'index';
 
-        //当前插件模块是否排除
+        //判断当前插件模块初始信息及是否全局
         $this->global = $this->globalAddonsName();
     }
 
@@ -361,9 +367,14 @@ class MultiAddons
                             }
                             if ($name) {
                                 $this->app->request->setRoot('/' . $name);
-                                $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
-                                $path = $this->app->request->pathinfo();
-                                $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+                                if ($this->addon_map){
+                                    $this->app->request->setRoot('/' . $mapname);
+                                    $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+                                }else{
+                                    $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+                                    $path = $this->app->request->pathinfo();
+                                    $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+                                }
                             }
                             $this->setAddons($appName ?: $defaultApp, $this->addonsName);
                             return true;
@@ -528,8 +539,18 @@ class MultiAddons
                                     $path = $this->app->request->pathinfo();
                                     $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
                                 }
+                            }else{
+                                if ($this->isrule){
+                                    $this->app->request->setRoot('/' . $addonsName.'/'. $appName);
+                                    $this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+                                }else{
+                                    $this->app->request->setRoot('/' . $addonsName.'/'. $appName);
+                                    //$this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+                                    //$path = $this->app->request->pathinfo();
+                                    //$this->app->request->setPathinfo(strpos($path, '/') ? ltrim(strstr($path, '/'), '/') : '');
+                                }
                             }
-                         }
+                        }
 
                         $this->setAddons($appName ?: $defaultApp,$addonsName);
                         return true;
@@ -758,6 +779,7 @@ class MultiAddons
         if ($map_info){
             foreach ($map_info as $key => $item) {
                 if ($addonsname == $item){
+                    $this->addon_map = true;
                     return $key;
                 }
             }
@@ -854,10 +876,11 @@ class MultiAddons
     {
         //附加插件模块
         $attach_list=Cache::get('attach_list',[]);
+        $defaultApp = $this->app->config->get('app.default_app') ?: 'index';
 
         foreach ($attach_list as $item) {
-            foreach ($item as $key2=>$value){
-                if ($value2 ==$subDomain){
+            foreach ($item as $key2=>$value2){
+                if ($value2 ==$value){
                     $list2 = explode('/', $key2);
                     if (count($list2)==2 && $list2[0] == $this->seconduri){
                         $appName=$list2[0];
@@ -870,7 +893,7 @@ class MultiAddons
                 $appName = $this->firsturi;
                 $this->app->http->setBind(true);
             }else{
-                $appName = $list[0] ?: $defaultApp;
+                $appName = $value ?: $defaultApp;
             }
         }
         return $appName;
