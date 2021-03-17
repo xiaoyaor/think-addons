@@ -369,7 +369,7 @@ class MultiAddons
                                 if ($this->addon_map){
                                     $this->set_website('/' . $name,$path,1);
                                 }else{
-                                    $this->set_website('/' . $name,$path,2);
+                                    $this->set_website('/' . $name,$path,1);
                                 }
                             }
                             $this->setAddons($appName ?: $defaultApp, $this->addonsName);
@@ -778,12 +778,22 @@ class MultiAddons
         $global_list=Cache::get('global_list',[]);
         //规则绑定列表
         $rule_list=Cache::get('rule_list',[]);
+        //判断
+        $map  = $this->map;
+        if (isset($map[$name])) {
+            if ($map[$name] instanceof Closure) {
+                $result = call_user_func_array($map[$name], [$this->app]);
+                $appName = $result ?: $name;
+            } else {
+                $appName = $map[$name];
+            }
+        }
 
         //规则绑定，还原绑定模块/插件
         $this->isrule = false;
         foreach ($rule_list as $k=>$val){
             foreach ($val as $key=>$value){
-                if ($key == $this->firsturi){
+                if ($key == $this->firsturi && $this->subDomain == $this->seconduri){
                     $temp = explode('/',$value);
                     if (count($temp) == 2){
                         $this->oldfirsturi = $this->firsturi;
