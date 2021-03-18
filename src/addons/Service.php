@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace think\addons;
 
 use easyadmin\Http;
+use Symfony\Component\VarExporter\VarExporter;
 use think\exception\HttpException;
 use think\facade\Db;
 use think\Exception;
@@ -443,6 +444,8 @@ class Service extends \think\Service
      */
     public static function refresh()
     {
+        // 刷新console文件
+        Service::rewriteConsole();
         //刷新addons.js
         $addons = get_addon_list();
         $bootstrapArr = [];
@@ -870,6 +873,83 @@ EOD;
     protected static function getServerUrl()
     {
         return Config::get('easyadmin.api_url');
+    }
+
+    /**
+     * 刷新控制台配置文件console.php
+     * @return  boolean
+     */
+    public static function rewriteConsole()
+    {
+        //console数组
+        $array = [];
+        //插件信息数组，包含名字，排序
+        $addons_sort = [];
+        // 读取插件目录及钩子列表
+        $base = get_class_methods("\\think\\Addons");
+        // 读取插件目录中的自定义插件顺序
+        $addons_path = app()->getRootPath() . 'addons' . DIRECTORY_SEPARATOR;
+        foreach (glob($addons_path . '*/*.php') as $addons_file) {
+            // 格式化路径信息
+            $info = pathinfo($addons_file);
+            // 获取插件目录名
+            $name = str::studly(pathinfo($info['dirname'], PATHINFO_FILENAME));
+            // 找到插件入口文件
+            if (strtolower($info['filename']) === strtolower($name)) {
+                //插件关闭后不加载事件
+                $ini_file = addon_ini($info['dirname'] . DIRECTORY_SEPARATOR);
+                if (!is_file($ini_file)) {
+                    continue;
+                }
+                $iniinfo = parse_ini_file($ini_file, true, INI_SCANNER_TYPED) ?: [];
+                if (!$iniinfo['state']) {
+                    continue;
+                }
+                $addons_sort[] = ['name' => $iniinfo['name'], 'sort' => isset($iniinfo['sort']) ? $iniinfo['sort'] : 0];
+                $addons_sort = array_sequence($addons_sort, 'sort');
+            }
+        }
+        $addons_filelist = [];
+        foreach ($addons_sort as $item) {
+            $addons_filelist[] = ['path'=>$addons_path . $item['name'] . DIRECTORY_SEPARATOR ,'filename'=>$addons_path . $item['name'] . '/' . str::studly($item['name']) . '.php'];
+        }
+        // 读取插件目录中的php文件
+        foreach ($addons_filelist as $addons_file) {
+            // 格式化路径信息
+            $info = pathinfo($addons_file['filename']);
+            // 获取插件目录名
+            $name = str::studly(pathinfo($info['dirname'], PATHINFO_FILENAME));
+            // 找到插件入口文件
+            if (strtolower($info['filename']) === strtolower($name)) {
+                //插件关闭后不加载事件
+                $ini_file = addon_ini($info['dirname'] . DIRECTORY_SEPARATOR);
+                if (!is_file($ini_file)) {
+                    continue;
+                }
+                $iniinfo = parse_ini_file($ini_file, true, INI_SCANNER_TYPED) ?: [];
+                if (!$iniinfo['state']) {
+                    continue;
+                }
+
+                foreach (glob($addons_file['path'] . 'app' . DIRECTORY_SEPARATOR . '*/config/console.php') as $addonsfile)
+                {
+                    if (!is_file($addonsfile)) {
+                        continue;
+                    }
+                    $temp = require $addonsfile;
+                    $array = array_merge($array, $temp['commands']);
+                }
+            }
+        }
+        $consolefile = root_path().'config'.DIRECTORY_SEPARATOR.'console.php';
+        $array = ['commands'=>$array];
+        if ($handle = fopen($consolefile, 'w')) {
+            fwrite($handle, "<?php\n\n" . "return " . VarExporter::export($array) . ";\n");
+            fclose($handle);
+        } else {
+            throw new Exception("文件没有写入权限");
+        }
+        return true;
     }
 
 }
