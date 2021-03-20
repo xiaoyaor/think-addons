@@ -838,7 +838,7 @@ class MultiAddons
             foreach ($item as $key2=>$value2){
                 if ($value2 ==$subdomain){
                     $list2 = explode('/', $key2);
-                    if (count($list2)==2 && $list2[0] == $this->seconduri){
+                    if (count($list2)==2 && $list2[0] == $this->firsturi){
                         $this->addonsName=$list2[1];
                         $this->isattach = true;
                     }
@@ -873,7 +873,7 @@ class MultiAddons
             foreach ($item as $key2=>$value2){
                 if ($value2 ==$value){
                     $list2 = explode('/', $key2);
-                    if (count($list2)==2 && $list2[0] == $this->seconduri){
+                    if (count($list2)==2 && $list2[0] == $this->firsturi){
                         $appName=$list2[0];
                     }
                 }
