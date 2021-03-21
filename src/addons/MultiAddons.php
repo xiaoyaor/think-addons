@@ -127,10 +127,18 @@ class MultiAddons
 
 
     /**
-     * 当前模块是否附加主模块下
+     * 当前插件是否绑定域名并且开启了模块附加功能
      * @var string
      */
-    protected $isattach;
+    protected $attach;
+
+    /**
+     * 当前插件是否绑定域名并且开启了模块附加功能
+     * 并且网址里存在模块名称
+     * 全局模块优先
+     * @var string
+     */
+    protected $attachmodel;
 
     /**
      * 子域名下使用了规则绑定
@@ -336,13 +344,12 @@ class MultiAddons
 
                 if ($this->app->http->isBind()) {
                     //获取插件名称
-                    if ($this->global) {
+                    if ($this->isrule){
                         $name = $this->addonsName = $module = $this->seconduri;
-                        $this->addonsName = $module = $this->realAddonsName($this->addonsName);
-                    } else {
+                    }else{
                         $name = $this->addonsName = $module = $this->firsturi;
-                        $this->addonsName = $module = $this->realAddonsName($this->addonsName);
                     }
+                    $this->addonsName = $module = $this->realAddonsName($this->addonsName);
 
                     //################首先匹配插件下URL
                     foreach ($data_list as $key => $value) {
@@ -503,14 +510,18 @@ class MultiAddons
                 foreach ($val as $key=>$value){
                     if ($key==$subDomain){
                         //获取模块名称
-                        $appName = $this->get_appname($subDomain,explode('/',$value)[0]);
+                        $appName = $this->get_appname($subDomain,explode('/',$value)[0],$addonsName);
 
                         $config=ADDON_PATH.$this->addonsName.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'app.php';
                         $con=$this->app->config->load($config,'app_'.$this->addonsName);
 
                         //附加
-                        if ($this->isattach){
-                            $this->set_website('/' . $name,$path,1);
+                        if ($this->attach){
+                            if ($this->attachmodel){
+                                $this->set_website('/' . $name,$path,1);
+                            }else{
+                                //未匹配到模块保持原网址，不需要处理
+                            }
                         }else{
                             $this->app->request->setRoot('/' . $appName);
                             //排除
@@ -793,7 +804,7 @@ class MultiAddons
         $this->isrule = false;
         foreach ($rule_list as $k=>$val){
             foreach ($val as $key=>$value){
-                if ($key == $this->firsturi && $this->subDomain == $this->seconduri){
+                if ($key == $this->firsturi ){//&& $this->subDomain == $this->seconduri
                     $temp = explode('/',$value);
                     if (count($temp) == 2){
                         $this->oldfirsturi = $this->firsturi;
@@ -831,62 +842,52 @@ class MultiAddons
     {
         //附加插件模块
         $attach_list=Cache::get('attach_list',[]);
-        //##############获取插件名称##########
-        //1.获取插件名称，判断将同级模块附加到主模块
-        $this->isattach = false;
-        foreach ($attach_list as $item) {
-            foreach ($item as $key2=>$value2){
-                if ($value2 ==$subdomain){
-                    $list2 = explode('/', $key2);
-                    if (count($list2)==2 && $list2[0] == $this->firsturi){
-                        $this->addonsName=$list2[1];
-                        $this->isattach = true;
-                    }
-                }
+        $list = explode('/', $value);
+        $this->attach = $this->attachmodel = false;
+
+        $this->addonsName = $tempaddons = $list[1];
+        if (isset($attach_list[$tempaddons]) &&$attach_list[$tempaddons]){
+            $this->attach = true;
+            $dir = ADDON_PATH . $tempaddons . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . $this->firsturi;
+            if (is_dir($dir)){
+                $this->attachmodel = true;
             }
         }
 
         //2.获取插件名称，判断子域名下排除模块
-        if (!$this->isattach){
-            $list = explode('/', $value);
-            if ($this->global){
-                $this->addonsName=$this->seconduri;
-            }else{
-                $this->addonsName=$list[1];
-            }
+        if ($this->global){
+            $this->addonsName = $this->seconduri;
         }
-        return $this->isattach;
+
+        return $this->attach;
     }
 
     /**
      * 获取模块名称
      * @param string $value 取值
-     * @param string $appName 取值
+     * @param string $appName 模块名称
+     * @param string $addonsName 插件名称
      */
-    protected function get_appname($value,$appName)
+    protected function get_appname($value,$appName,$addonsName)
     {
-        //附加插件模块
-        $attach_list=Cache::get('attach_list',[]);
         $defaultApp = $this->app->config->get('app.default_app') ?: 'index';
 
-        foreach ($attach_list as $item) {
-            foreach ($item as $key2=>$value2){
-                if ($value2 ==$value){
-                    $list2 = explode('/', $key2);
-                    if (count($list2)==2 && $list2[0] == $this->firsturi){
-                        $appName=$list2[0];
-                    }
+        if ($this->attach){
+            if ($this->attachmodel) {
+                //在绑定域名模块里排除规则绑定
+                if ($this->isrule){
+                    $appName=$this->oldfirsturi;
+                }else{
+                    $appName=$this->firsturi;
                 }
             }
         }
-        if (!$this->isattach){
-            if ($this->global){
-                $appName = $this->firsturi;
-                $this->app->http->setBind(true);
-            }else{
-                $appName = $appName ?: $defaultApp;
-            }
+
+        if ($this->global){
+            $appName = $this->firsturi;
+            $this->app->http->setBind(true);
         }
+
         return $appName;
     }
 
