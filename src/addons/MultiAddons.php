@@ -594,6 +594,12 @@ class MultiAddons
                 }
                 $this->setAddons($appName ?: $defaultApp,$addonsName);
                 return true;
+            }else{
+                $appName = $name ?: $defaultApp;
+                $appPath = $this->path ?: $this->app->getBasePath() . $appName . DIRECTORY_SEPARATOR;
+                if (!is_dir($appPath)) {
+                    return $this->express($defaultApp);
+                }
             }
         }
 
