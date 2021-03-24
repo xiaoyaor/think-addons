@@ -34,12 +34,6 @@ class MultiAddons
      * 应用名称
      * @var string
      */
-    protected $name;
-
-    /**
-     * 应用名称
-     * @var string
-     */
     protected $appName = 'index';
 
     /**
@@ -47,12 +41,6 @@ class MultiAddons
      * @var string
      */
     protected $addonsName = 'index';
-
-    /**
-     * 应用路径
-     * @var string
-     */
-    protected $path;
 
     /**
      * 网址路径
@@ -150,9 +138,6 @@ class MultiAddons
     public function __construct(App $app)
     {
         $this->app  = $app;
-        $this->name = $this->app->http->getName();
-        $this->path = $this->app->http->getPath();
-
         //网址路径(不包含域名，包含后缀名)
         $this->uri = $this->app->request->pathinfo();
         $this->map  = $this->app->config->get('app.app_map', []);
@@ -217,8 +202,8 @@ class MultiAddons
         $scriptName = $this->getScriptName();
         $defaultApp = $this->app->config->get('app.default_app') ?: 'index';
 
-        if ($this->name || ($scriptName && !in_array($scriptName, ['index', 'router', 'think']))) {
-            $appName = $this->name ?: $scriptName;
+        if (($scriptName && !in_array($scriptName, ['index', 'router', 'think']))) {
+            $appName = $scriptName;
             //应用的首页入口,绑定到相应应用
             $this->app->http->setBind();
         } else {
@@ -263,19 +248,6 @@ class MultiAddons
                     //######################【app】#####################################
                     return $this->parseMultiApp();//【系统模块绑定映射】
                 } else {
-
-                    //######################【addons】#####################################
-                    //xxxxsite.php里网站首页自定义绑定
-                    $homepage = $this->app->config->get('site.homepage') ?: '';
-                    if ($homepage&&!$this->path) {
-                        $list = explode('/', $homepage);
-                        $this->addonsName=$list[1];
-                        $this->addonsName=$this->realAddonsName($this->addonsName);
-                        $config=ADDON_PATH.$this->addonsName.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'app.php';
-                        $con=$this->app->config->load($config,'app_'.$this->addonsName);
-                        return $this->parseMultiAddons(2 , $this->addonsName);//【应用模块绑定映射】
-                    }
-
                     //#########################【addons】##################################
                     //xxxxconfig.php里规则绑定
                     foreach ($rule_list as $k=>$val){
@@ -284,12 +256,12 @@ class MultiAddons
                             if ($key == $tmp){
                                 $list = explode('/', $value);
                                 $this->addonsName=$this->realAddonsName($list[1]);
-                                return $this->parseMultiAddons(3 , $this->addonsName);//【应用模块绑定映射】
+                                return $this->parseMultiAddons(2 , $this->addonsName);//【应用模块绑定映射】
                             }
                         }
                     }
                     //######################【app】#####################################
-                    //xxx剩余其他
+                    //xxx剩余其他,正常插件url、不存在url
                     return $this->parseMultiApp();
                 }
             }
@@ -320,8 +292,8 @@ class MultiAddons
         $subDomain = $this->subDomain;
         $domain    = $this->domain;
 
-        if ($this->name || ($scriptName && !in_array($scriptName, ['index', 'router', 'think']))) {
-            $appName = $this->name ?: $scriptName;
+        if (($scriptName && !in_array($scriptName, ['index', 'router', 'think']))) {
+            $appName = $scriptName;
             $this->app->http->setBind();
         } else {
             // 自动多应用识别
@@ -366,10 +338,10 @@ class MultiAddons
                             } elseif ($name && isset($map['*'])) {
                                 $appName = $map['*'];
                             } else {
-                                $appPath = $this->path ?: ADDON_PATH . $this->addonsName . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . $appName . DIRECTORY_SEPARATOR;;
+                                $appPath = ADDON_PATH . $this->addonsName . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . $appName . DIRECTORY_SEPARATOR;;
 
                                 if (!is_dir($appPath)) {
-                                    return $this->express($defaultApp);
+                                    return $this->express();
                                 }
                             }
                             if ($name) {
@@ -397,9 +369,9 @@ class MultiAddons
                     } elseif ($name && isset($map['*'])) {
                         $appName = $map['*'];
                     } else {
-                        $appPath = $this->path ?: $this->app->getBasePath() . $appName . DIRECTORY_SEPARATOR;
+                        $appPath = $this->app->getBasePath() . $appName . DIRECTORY_SEPARATOR;
                         if (!is_dir($appPath)) {
-                            return $this->express($defaultApp);
+                            return $this->express();
                         }
                     }
                     if ($name) {
@@ -435,10 +407,10 @@ class MultiAddons
                             } else {
 
                                 $appName = $name ?: $defaultApp;
-                                $appPath = $this->path ?: ADDON_PATH.$this->addonsName . DIRECTORY_SEPARATOR.'app'. DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR;;
+                                $appPath = ADDON_PATH.$this->addonsName . DIRECTORY_SEPARATOR.'app'. DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR;;
 
                                 if (!is_dir($appPath)) {
-                                    return $this->express($defaultApp);
+                                    return $this->express();
                                 }
                             }
                             if ($name) {
@@ -465,11 +437,14 @@ class MultiAddons
                 } else {
 
                     $appName = $name ?: $defaultApp;
-                    $appPath = $this->path ?: $this->app->getBasePath() . $appName . DIRECTORY_SEPARATOR;
-                    if (!is_dir($appPath)) {
-                        return $this->express($defaultApp);
+                    $appPath = $this->app->getBasePath() . $appName . DIRECTORY_SEPARATOR;
+                    //系统下不存在模块或匹配到默认插件模块的首页
+                    if (!is_dir($appPath) || config('site.default_app')) {
+                        return $this->express();
                     }
                 }
+
+                //默认url访问通道，例如网站后台
                 if ($name) {
                     $this->set_website('/' . $name,$path,1);
                 }
@@ -485,7 +460,7 @@ class MultiAddons
      * @param string $addonsName 应用的名称 $addonsName
      * @return bool
      */
-    protected function parseMultiAddons($step=0 , $addonsName = 'index'): bool
+    protected function parseMultiAddons($step , $addonsName = 'index'): bool
     {
         //域名绑定列表
         $domain_list=Cache::get('domain_list',[]);
@@ -551,8 +526,7 @@ class MultiAddons
                 }
             }
         }
-
-        if ($step ==3){
+        if ($step ==2){
             //2.xxxx解析config.php里规则绑定
             foreach ($rule_list as $k=>$val){
                 foreach ($val as $key=>$value){
@@ -575,35 +549,14 @@ class MultiAddons
             }
         }
 
-        if ($step ==2){
-            //3.xxxxsite.php里网站首页自定义绑定
-            $homepage = $this->app->config->get('site.homepage') ?: '';
-            if ($homepage&&!$path) {
-                $list = explode('/', $homepage);
-                $this->addonsName=$list[1];
-                $this->addonsName=$this->realAddonsName($this->addonsName);
-                $config=ADDON_PATH.$this->addonsName.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'app.php';
-                $con=$this->app->config->load($config,'app_'.$this->addonsName);
-
-
-                if ($homepage&&!$path){
-                    $appName = $list[0] ?: $defaultApp;
-                    if ($name) {
-                        $this->set_website('/' . $name,$path,1);
-                    }
-                }
-                $this->setAddons($appName ?: $defaultApp,$addonsName);
-                return true;
-            }else{
-                $appName = $name ?: $defaultApp;
-                $appPath = $this->path ?: $this->app->getBasePath() . $appName . DIRECTORY_SEPARATOR;
-                if (!is_dir($appPath)) {
-                    return $this->express($defaultApp);
-                }
-            }
+        $appName = $name ?: $defaultApp;
+        $appPath = $this->app->getBasePath() . $appName . DIRECTORY_SEPARATOR;
+        if (!is_dir($appPath)) {
+            return $this->express();
         }
 
-        $this->setApp($appName ?: $defaultApp);
+        $this->set_website('/' . $name,$path,2);
+        $this->setAddons($appName ?: $defaultApp,$addonsName);
         return true;
     }
 
@@ -617,7 +570,7 @@ class MultiAddons
         $this->app->http->name($appName);
         $this->app->request->appName=$appName;
 
-        $appPath = $this->path ?: $this->app->getBasePath() . $appName . DIRECTORY_SEPARATOR;
+        $appPath = $this->app->getBasePath() . $appName . DIRECTORY_SEPARATOR;
 
         $this->app->setAppPath($appPath);
         // 设置应用命名空间
@@ -644,7 +597,7 @@ class MultiAddons
         $this->app->request->appName=$appName;
         $this->app->request->addonsName=$addonsName;
 
-        $appPath = $this->path ?: ADDON_PATH.$addonsName . DIRECTORY_SEPARATOR.'app'. DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR;
+        $appPath = ADDON_PATH.$addonsName . DIRECTORY_SEPARATOR.'app'. DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR;
 
         $this->app->setAppPath($appPath);
 
@@ -736,13 +689,15 @@ class MultiAddons
     /**
      * 异常跳转
      * @access protected
-     * @param string $defaultApp 默认app名称
      * @return boolean
      */
-    protected function express($defaultApp): bool
+    protected function express(): bool
     {
-        $express = $this->app->config->get('app.app_express', false);
-        if ($express) {
+        //开启应用快速访问
+        $exp = $this->app->config->get('app.app_express', false);
+        //默认app名称
+        $defaultApp = $this->app->config->get('app.default_app') ?: 'index';
+        if ($exp) {
             //开启插件快速访问
             if (config('site.default_app')){
                 $default_app=explode('/',config('site.default_app'));
