@@ -176,7 +176,6 @@ class MultiAddons
             });
     }
 
-
     /**
      * 解析多应用
      * 4个转到 parseMulti App，3个转到 parseMulti addons
