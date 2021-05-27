@@ -512,6 +512,7 @@ EOD;
         // 移除临时文件
         @unlink($tmpFile);
 
+        // 检查插件
         try {
             // 检查插件是否完整
             Service::check($name);
@@ -541,6 +542,50 @@ EOD;
             throw new Exception($e->getMessage());
         }
 
+        //若为应用模块则需要重命名
+        try {
+            if (isset($extend['app']) && $extend['app'] && strpos($name,'app_' ) !== false){
+
+                $AddonDir = ADDON_PATH . $name . DIRECTORY_SEPARATOR;
+                $infoFile = $AddonDir . 'addon.ini';
+
+                //加载配置文件
+                $config = (new \think\Config)->load($infoFile , $name);
+
+                //模块插件安装特殊处理
+                if (isset($config['type']) && $config['type'] == 'appmodule'){
+                    //要安装的应用名称
+                    $app = $extend['app'];
+                    //安装在非系统的应用管理下
+                    if ($app != 'app'){
+                        //插件名称
+                        $old_addon = $config['name'];
+                        //重新组合的插件名称
+                        $new_addon = str_replace('app_',$app.'_',$old_addon);
+                        //下划线转驼峰
+                        $oldaddon = Str::studly($old_addon);
+                        //下划线转驼峰
+                        $newaddon = Str::studly($new_addon);
+                        //遍历所有文件夹和文件
+                        $dirlist = getAllDir($AddonDir);
+                        //替换所有特定信息
+                        replaceSignStr($AddonDir,$dirlist,['app_',$oldaddon],[$app.'_',$newaddon]);
+                        //重命名主文件
+                        rename($AddonDir.$oldaddon.'.php', $AddonDir.$newaddon.'.php');
+                        //重新写入父菜单
+                        file_put_contents($AddonDir.'addon.ini',str_replace('parent_menu = app','parent_menu = '.$app,file_get_contents($AddonDir.'addon.ini')));
+                        file_put_contents($AddonDir.'addon.ini',str_replace('parent = easyadmin','parent = '.$app,file_get_contents($AddonDir.'addon.ini')));
+                        $name =$new_addon;
+                        //完成移动并重命名插件文件夹
+                        rename($AddonDir, ADDON_PATH . $name . DIRECTORY_SEPARATOR);
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            throw new Exception($e->getMessage());
+        }
+
+        //安装、启用插件
         try {
             // 默认启用该插件
             $info = get_addon_info($name);
