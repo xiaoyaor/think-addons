@@ -334,13 +334,17 @@ class Addons
      */
     public function dashboard($params,$data=[])
     {
-        if (!file_exists($this->addon_path.'dashboard.html')){
+        if (file_exists($this->addon_path.'dashboard.html')){
+            $file = '/dashboard';
+        }else if (file_exists($this->addon_path.'view/dashboard.html')){
+            $file = '/view/dashboard';
+        }else{
             return null;
         }
         //$this->view->layout(false);
         $addons =$this->getInfo() ;
         $this->assign(['params' => $params,'addons' => $addons]);
         $this->assign($data);
-        return $this->fetch('/dashboard');
+        return $this->fetch($file);
     }
 }
