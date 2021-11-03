@@ -877,7 +877,7 @@ if (!function_exists('getAllApp')){
         $list = [];
         foreach ($addons as $k => $v) {
 
-            if (isset($v['type']) && $v['type'] != 'app'){
+            if (!isset($v['type']) || $v['type'] != 'app'){
                 continue;
             }
 
