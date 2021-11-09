@@ -438,7 +438,7 @@ class MultiAddons
                     $appName = $name ?: $defaultApp;
                     $appPath = $this->app->getBasePath() . $appName . DIRECTORY_SEPARATOR;
                     //系统下不存在模块或匹配到默认插件模块的首页
-                    if (!is_dir($appPath) || config('site.default_app')) {
+                    if (!is_dir($appPath) && config('site.default_app')) {
                         return $this->express();
                     }
                 }
