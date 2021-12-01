@@ -591,6 +591,12 @@ class MultiAddons
      */
     protected function setAddons(string $appName,string $addonsName): void
     {
+        //禁止访问模块
+        $addons_list=Cache::get('config_data_single_list',[]);
+        if (isset($addons_list[$addonsName]['forbidden']) && in_array($appName,$addons_list[$addonsName]['forbidden'])){
+            $configPath = ADDON_PATH.$addonsName . DIRECTORY_SEPARATOR.'config.php';
+            throw new HttpException(404, 'Forbidden module:'.$configPath);
+        }
         $this->appName = $appName;
         $this->app->http->name($appName);
         $this->app->request->appName=$appName;
@@ -607,7 +613,9 @@ class MultiAddons
         $this->app->setNamespace($app_namespace.'app\\'.$appName ?: 'app\\' . $appName);
 
         if (is_dir($appPath)) {
-            $this->app->setRuntimePath($this->app->getRuntimePath() . $appName . DIRECTORY_SEPARATOR);
+            //runtime存放目录
+            $this->app->setRuntimePath($this->app->getRuntimePath() . 'addons' . DIRECTORY_SEPARATOR. $addonsName . DIRECTORY_SEPARATOR. $appName . DIRECTORY_SEPARATOR);
+            //路由存放目录
             $this->app->http->setRoutePath($this->getRoutePath());
 
             //加载同名应用文件
@@ -749,16 +757,6 @@ class MultiAddons
         $global_list=Cache::get('global_list',[]);
         //规则绑定列表
         $rule_list=Cache::get('rule_list',[]);
-        //判断
-        $map  = $this->map;
-        if (isset($map[$name])) {
-            if ($map[$name] instanceof Closure) {
-                $result = call_user_func_array($map[$name], [$this->app]);
-                $appName = $result ?: $name;
-            } else {
-                $appName = $map[$name];
-            }
-        }
 
         //规则绑定，还原绑定模块/插件
         $this->isrule = false;
